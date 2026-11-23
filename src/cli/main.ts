@@ -84,16 +84,25 @@ async function runDefault(args: Args): Promise<number> {
   return isBoard(board) ? cmdUi(args, board) : cmdInit(args, true);
 }
 
+/** Ответ без доски и без команды: версия и справка — флагом (`--version`, `--help`) или словом (`-v`, `help`, `-h`). */
+export function instant(args: Args): string | null {
+  const first = args.positional[0];
+  if (args.flags.version !== undefined || first === '-v') return VERSION;
+  if (args.flags.help !== undefined || first === 'help' || first === '-h') return USAGE;
+  return null;
+}
+
 export async function main(argv: readonly string[]): Promise<void> {
   const args = parseArgs(argv);
   const verb = args.positional[0];
   try {
+    // до разбора команды: `viboard --help` не должен запускать интерфейс (баг найден при публикации)
+    const answer = instant(args);
+    if (answer !== null) return say(answer);
     if (verb === undefined) {
       process.exitCode = await runDefault(args);
       return;
     }
-    if (verb === 'help' || verb === '--help' || verb === '-h') return say(USAGE);
-    if (verb === '--version' || verb === '-v') return say(VERSION);
     const handler = COMMANDS[verb];
     if (!handler) throw new Fail(`unknown command «${verb}»\n\n${USAGE}`);
     process.exitCode = await handler(args);

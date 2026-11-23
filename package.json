@@ -10,8 +10,8 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "bin": {
-    "viboard": "./dist/bin/viboard.js",
-    "vitask": "./dist/bin/viboard.js"
+    "viboard": "dist/bin/viboard.js",
+    "vitask": "dist/bin/viboard.js"
   },
   "files": [
     "dist",
