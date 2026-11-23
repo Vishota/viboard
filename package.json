@@ -1,0 +1,61 @@
+{
+  "name": "viboard",
+  "version": "0.1.0",
+  "description": "File-based task board: Trello for you, ls and cat for your AI agent",
+  "license": "GPL-3.0-only",
+  "author": "Vishota",
+  "homepage": "https://vishota.com",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "bin": {
+    "viboard": "./dist/bin/viboard.js",
+    "vitask": "./dist/bin/viboard.js"
+  },
+  "files": [
+    "dist",
+    "protocol"
+  ],
+  "scripts": {
+    "build": "npm run build:node && npm run build:ui",
+    "build:node": "tsc -p tsconfig.build.json",
+    "build:ui": "vite build",
+    "dev": "vite",
+    "typecheck": "tsc -p tsconfig.node.json && vue-tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run format && npm run typecheck && npm run test",
+    "prepublishOnly": "npm run check && npm run build"
+  },
+  "keywords": [
+    "kanban",
+    "task-board",
+    "ai-agents",
+    "agent-friendly",
+    "claude-code",
+    "cursor",
+    "codex"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.6.0",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.12.1",
+    "happy-dom": "^21.0.4",
+    "jiti": "^2.7.0",
+    "prettier": "^3.10.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1",
+    "vue": "^3.5.46",
+    "vue-tsc": "^3.3.14"
+  }
+}

@@ -1,0 +1,8 @@
+# Документы и данные доски форматируются руками: Prettier — только про код.
+*.md
+board/
+archive/
+current/
+tmp/
+dist/
+package-lock.json

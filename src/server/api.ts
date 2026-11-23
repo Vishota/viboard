@@ -1,0 +1,169 @@
+// JSON-API доски: проекция файловой системы для UI. Без состояния — каждый ответ читается с диска (А1).
+// Все действия — «рука владельца»: сервер лишь передаёт то, что ввёл владелец в UI.
+
+import { statSync } from 'node:fs';
+import { join } from 'node:path';
+import { listCards, oneCard, readColumns, readEntries, readProjects, summaryOf } from '../core/board.js';
+import { installedProtocolVersion } from '../core/check.js';
+import { Fail } from '../core/errors.js';
+import { isRealFile, listFiles } from '../core/fs.js';
+import { ATT_RE } from '../core/names.js';
+import {
+  addColumn,
+  addProject,
+  createCard,
+  deleteCard,
+  deleteColumn,
+  editCard,
+  moveCard,
+  saveAsset,
+} from '../core/ops.js';
+import { promptSet, prompts, type PromptContext } from '../core/prompts.js';
+import { listThreads, postOwnerMessage, threadPath } from '../core/threads.js';
+import type { BoardState, CardDetail, Project } from '../core/types.js';
+
+export interface ApiContext {
+  board: string;
+  version: string;
+  promptContext: PromptContext;
+}
+
+type Body = Record<string, unknown>;
+
+const str = (body: Body, key: string): string => {
+  const v = body[key];
+  return typeof v === 'string' ? v : '';
+};
+
+const flag = (body: Body, key: string): boolean => body[key] === true;
+
+/** Число из JSON: число как есть, непустая строка — через Number, остальное — undefined. */
+const num = (body: Body, key: string): number | undefined => {
+  const v = body[key];
+  if (typeof v === 'number') return v;
+  return typeof v === 'string' && v.trim() !== '' ? Number(v) : undefined;
+};
+
+const sizeOf = (file: string): number => {
+  try {
+    return statSync(file).size;
+  } catch {
+    return 0;
+  }
+};
+
+function knownProject(ctx: ApiContext, id: string): string {
+  const project: Project | undefined = readProjects(ctx.board).find((p) => p.id === id);
+  if (!project) throw new Fail(`project «${id}» is not in projects.yml`);
+  return id;
+}
+
+export function buildState(ctx: ApiContext): BoardState {
+  const { board } = ctx;
+  return {
+    root: board,
+    version: ctx.version,
+    columns: readColumns(board),
+    cards: listCards(board).map(summaryOf),
+    projects: readProjects(board),
+    questions: listThreads(board),
+    prompts: promptSet(ctx.promptContext),
+    protocol: { installed: installedProtocolVersion(board), current: ctx.version },
+  };
+}
+
+export function cardDetail(ctx: ApiContext, ref: string): CardDetail {
+  const card = oneCard(ctx.board, ref);
+  const assetSizes = Object.fromEntries(card.assets.map((name) => [name, sizeOf(join(card.dir, 'assets', name))]));
+  return { card, entries: readEntries(card), assetSizes };
+}
+
+/** Обрабатывает JSON-маршрут; null — маршрут не найден. */
+export function handleJson(
+  ctx: ApiContext,
+  method: string,
+  pathname: string,
+  query: URLSearchParams,
+  body: Body,
+): object | null {
+  const { board } = ctx;
+  if (method === 'GET' && pathname === '/api/state') return buildState(ctx);
+  if (method === 'GET' && pathname === '/api/card') return cardDetail(ctx, query.get('id') ?? '');
+  if (method === 'GET' && pathname === '/api/prompt') {
+    // тот же источник, что `viboard prompt`: кнопка «Copy for agent»
+    const asked = query.get('role') ?? 'executor';
+    if (asked !== 'executor' && asked !== 'reviewer' && asked !== 'manager') {
+      throw new Fail(`role must be executor, reviewer or manager; got «${asked}»`);
+    }
+    const role: keyof typeof prompts = asked;
+    const ref = query.get('id');
+    return { prompt: prompts[role](ctx.promptContext, ref ? oneCard(ctx.board, ref) : null, '<tag>') };
+  }
+
+  if (method !== 'POST') return null;
+  switch (pathname) {
+    case '/api/card': {
+      const card = createCard(board, {
+        project: knownProject(ctx, str(body, 'project')),
+        title: str(body, 'title'),
+        body: str(body, 'body'),
+        priority: num(body, 'priority'),
+        column: str(body, 'column') || undefined,
+      });
+      return { card: summaryOf(card) };
+    }
+    case '/api/card/edit': {
+      const card = editCard(board, str(body, 'id'), {
+        title: str(body, 'title') || undefined,
+        body: typeof body.body === 'string' ? body.body : undefined,
+        project: str(body, 'project') || undefined,
+        priority: num(body, 'priority'),
+      });
+      return { card: summaryOf(card) };
+    }
+    case '/api/card/move': {
+      const card = moveCard(board, str(body, 'id'), str(body, 'to'), { force: flag(body, 'force') });
+      return { card: summaryOf(card) };
+    }
+    case '/api/card/delete':
+      return { column: deleteCard(board, str(body, 'id')) };
+    case '/api/columns': {
+      const name = str(body, 'name');
+      return body.action === 'delete' ? { deleted: deleteColumn(board, name) } : { added: addColumn(board, name) };
+    }
+    case '/api/project':
+      return {
+        project: addProject(board, {
+          id: str(body, 'id') || undefined,
+          name: str(body, 'name'),
+          path: str(body, 'path'),
+        }),
+      };
+    case '/api/chat':
+      return { file: postOwnerMessage(board, str(body, 'q'), str(body, 'text')) };
+    default:
+      return null;
+  }
+}
+
+/** Вложение в карточку — в assets/; возвращает имя файла. */
+export function attachToCard(ctx: ApiContext, ref: string, filename: string, data: Buffer): string {
+  const card = oneCard(ctx.board, ref);
+  return saveAsset(join(card.dir, 'assets'), filename, data);
+}
+
+/** Вложение карточки: только имя из фактического списка assets/ — путь собрать нельзя. */
+export function cardAssetPath(ctx: ApiContext, ref: string, name: string | null): string {
+  const card = oneCard(ctx.board, ref);
+  if (!name || !card.assets.includes(name)) throw new Fail('file not found');
+  const file = join(card.dir, 'assets', name);
+  if (!isRealFile(file)) throw new Fail('file not found');
+  return file;
+}
+
+/** Вложение треда: только существующий файл вида <время>-<тег>-att-<имя> в этом треде. */
+export function threadAssetPath(ctx: ApiContext, dir: string, name: string | null): string {
+  const thread = threadPath(ctx.board, dir);
+  if (!name || !ATT_RE.test(name) || !listFiles(thread).includes(name)) throw new Fail('file not found');
+  return join(thread, name);
+}

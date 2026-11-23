@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# Временные артефакты
+tmp/
+
+# Доска владельца живёт вне репозитория — ~/.viboard/board (UD-29)
+/board/
