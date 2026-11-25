@@ -77,6 +77,7 @@ const ru: Record<string, string> = {
   '{count} files are left in the old folder — close the program that holds them and delete {path}':
     'В старой папке осталось файлов: {count} — закройте программу, которая их держит, и удалите {path}',
   'The default board is unchanged: {path}': 'Доска по умолчанию не изменилась: {path}',
+  'Guide, use cases and news:': 'Гайд, юз кейсы и новости:',
   Chat: 'Чат',
   'Clear filters': 'Сбросить фильтры',
   Close: 'Закрыть',

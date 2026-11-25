@@ -7,6 +7,8 @@ A task board where everything is a folder of files. You work in an interface, as
 - **Tokens are not wasted:** the log is small files, one per event; status is read by listing; the agent protocol is about 80 lines, the rest is per role.
 - **Secure by default:** the server listens on `127.0.0.1` only; another page cannot read or change the board; for access through a tunnel there is an opt-in password.
 
+**Project page:** <https://vishota.com/projects/viboard> — the guide, use cases, the devlog and issues. Questions and bug reports: <https://vishota.com/projects/viboard/forum/viboard-issues>.
+
 ## Quick start
 
 Requires Node.js 20.19+ or 22.12+.

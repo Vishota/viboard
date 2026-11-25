@@ -4,7 +4,8 @@
   "description": "File-based task board: Trello for you, ls and cat for your AI agent",
   "license": "GPL-3.0-only",
   "author": "Vishota",
-  "homepage": "https://vishota.com",
+  "homepage": "https://vishota.com/projects/viboard",
+  "bugs": "https://vishota.com/projects/viboard/forum/viboard-issues",
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

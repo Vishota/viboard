@@ -68,6 +68,11 @@ const readMore = ref(false);
       </p>
     </template>
 
+    <p class="help-text">
+      {{ t('Guide, use cases and news:') }}
+      <a href="https://vishota.com/projects/viboard" target="_blank" rel="noopener">vishota.com/projects/viboard</a>
+    </p>
+
     <div class="actions">
       <span class="grow" />
       <button type="button" class="btn" @click="closeModal(modalId)">{{ t('Got it') }}</button>

@@ -19,8 +19,8 @@ import { t } from '../i18n';
 
 <template>
   <header class="header">
-    <!-- Имя — ссылка на оригинал: лицензия требует указывать исходный репозиторий (UD-33) -->
-    <a class="brand" href="https://github.com/Vishota/viboard" target="_blank" rel="noopener">viboard</a>
+    <!-- Имя — страница проекта: гайд, юз кейсы, девлог, issues (карточка 051). Указание оригинала — в LICENSE и README (UD-33). -->
+    <a class="brand" href="https://vishota.com/projects/viboard" target="_blank" rel="noopener">viboard</a>
     <span v-if="state" class="header-path" :title="state.root">{{ state.root }}</span>
     <span class="grow" />
     <div class="locale" role="group" :aria-label="t('Language')">
