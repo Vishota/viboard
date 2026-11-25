@@ -30,7 +30,8 @@ For an AI agent
   1. viboard prompt — prints a ready briefing: the board folder and its rules file
   2. Read that file, <board>/AGENTS.md — about 80 lines, the whole rule set
   3. viboard ls → pick a free card → viboard session → viboard claim <id>
-  Need the owner? viboard ask <id> "<question>". Done? viboard review <id> "<what was done>".
+  Need the owner? viboard ask <id> "<question>" — a thread is the only channel, never a file in the card.
+  Done? viboard review <id> "<what was done>".
 
 Start
   viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI

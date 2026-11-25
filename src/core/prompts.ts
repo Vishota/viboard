@@ -28,7 +28,7 @@ function executorPrompt(ctx: PromptContext, card: Card | null, tag: string): str
   const head = ['You are an executor on the viboard file-based task board.', boardLine(ctx.board), identity(tag)];
   const finish = (id: string): string[] => [
     `${ctx.cli} claim ${id} → do the work → ${ctx.cli} review ${id} "<what was done and how it was verified>".`,
-    `Need the owner's answer — ${ctx.cli} ask ${id} "<question with options>". Never rewrite the task.`,
+    `Need the owner's answer — ${ctx.cli} ask ${id}: the thread is the only channel; the whole question is its text, never a file in the card. Never rewrite the task.`,
   ];
   if (!card) {
     return lines(
@@ -63,7 +63,7 @@ function managerPrompt(ctx: PromptContext, _card: Card | null, tag: string): str
     `Then read ${toPosix(ctx.board)}/manager.md.`,
     identity(tag),
     `The pass: ${ctx.cli} check → resolve every finding as manager.md describes → questions to the owner as one batch, in the chat of your environment.`,
-    'Only the manager commits the board, at the end of the pass.',
+    'Only the manager commits the board, at the end of the pass — when the automatic git sync of the board is off.',
   );
 }
 
