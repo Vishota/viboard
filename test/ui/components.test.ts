@@ -8,7 +8,7 @@ import SyncPanel from '../../ui/src/components/SyncPanel.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
 import { toasts } from '../../ui/src/modal';
 import { cardMatches, filterActive, filters, resetFilters, chatOpen, state, stopPolling } from '../../ui/src/store';
-import { setLocale, t } from '../../ui/src/i18n';
+import { locale, setLocale, t } from '../../ui/src/i18n';
 
 const T = Date.parse('2026-11-23T10:00:00Z');
 
@@ -310,6 +310,26 @@ describe('поиск и фильтры (карточка 044)', () => {
 });
 
 describe('локализация интерфейса (карточка 048)', () => {
+  it('<html lang> равен языку интерфейса с первого кадра; подсказки путей не портят обратные слэши (найдено проверяющим)', async () => {
+    expect(document.documentElement.lang).toBe(locale.value);
+    setLocale('ru');
+    expect(document.documentElement.lang).toBe('ru');
+    setLocale('en');
+    expect(document.documentElement.lang).toBe('en');
+    state.value = { ...board(), board: { ...board().board, isDefault: false, defaultPath: 'C:/boards/other' } };
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    const boardButton = wrapper.findAll('button').find((b) => b.text() === 'Board');
+    void boardButton?.trigger('click');
+    await flushPromises();
+    const input = document.body.querySelector<HTMLInputElement>('.modal input[name="board-path"]');
+    expect(input?.placeholder).toBe('C:\\boards\\my-board');
+    expect(document.body.textContent).toContain('Use this board as the default');
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
   afterEach(() => setLocale('en'));
 
   it('переключатель меняет только представление; имена колонок и файлов не переводятся', async () => {

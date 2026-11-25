@@ -91,7 +91,7 @@ async function submit(): Promise<void> {
       </div>
       <div class="field">
         <label for="project-path">{{ t('Project folder') }}</label>
-        <input id="project-path" v-model="projectPath" name="projectPath" :placeholder="t('C:\projects\my-app')" />
+        <input id="project-path" v-model="projectPath" name="projectPath" placeholder="C:\projects\my-app" />
       </div>
     </template>
     <div class="field">

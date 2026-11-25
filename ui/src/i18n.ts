@@ -155,6 +155,8 @@ function initial(): Locale {
 }
 
 export const locale = ref<Locale>(initial());
+// <html lang> сразу равен языку интерфейса: экранный диктор и переводчик страницы не считают её русской
+document.documentElement.lang = locale.value;
 
 export function setLocale(next: Locale): void {
   locale.value = next;

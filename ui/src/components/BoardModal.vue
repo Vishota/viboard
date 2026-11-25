@@ -78,7 +78,7 @@ async function move(force: boolean): Promise<void> {
 
     <h4 class="agent-heading">{{ t('Move to another folder') }}</h4>
     <div class="row">
-      <input v-model="target" name="board-path" :placeholder="t('C:\\boards\\my-board')" :disabled="busy" />
+      <input v-model="target" name="board-path" placeholder="C:\boards\my-board" :disabled="busy" />
       <button type="button" class="btn-sec" :disabled="busy" @click="move(false)">{{ t('Move') }}</button>
     </div>
     <button v-if="lockRefused" type="button" class="btn-danger" :disabled="busy" @click="move(true)">
