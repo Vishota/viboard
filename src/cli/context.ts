@@ -1,7 +1,8 @@
 // Общее для команд: где доска, кто сессия, как читать текст команды.
 
 import { resolve } from 'node:path';
-import { isBoard, resolveBoard } from '../core/board.js';
+import { isBoard } from '../core/board.js';
+import { boardInfo } from '../core/home.js';
 import { Fail } from '../core/errors.js';
 import { readText } from '../core/fs.js';
 import { sessionTag } from '../core/names.js';
@@ -12,7 +13,7 @@ export const ENV_SESSION = 'VIBOARD_SESSION';
 
 /** Путь к доске: --board, $VIBOARD_BOARD, ./board, ~/.viboard/board. Не доска — ошибка с подсказкой. */
 export function requireBoard(args: Args): string {
-  const board = resolveBoard(option(args, 'board'));
+  const board = boardInfo(option(args, 'board')).path;
   if (!isBoard(board)) {
     throw new Fail(`board not found: ${toPosix(board)} — create one: viboard init (--here for the current directory)`);
   }

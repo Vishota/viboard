@@ -1,4 +1,4 @@
-import type { BoardState, CardDetail, CardPatch, CardSummary, Project, PromptName } from '@core/types';
+import type { BoardState, CardDetail, CardPatch, CardSummary, MoveResult, Project, PromptName } from '@core/types';
 
 /** Ошибка API с готовым текстом для владельца (сервер присылает { error }). */
 export class ApiError extends Error {
@@ -45,24 +45,26 @@ export const chatAssetUrl = (params: Record<string, string>): string => `/api/ch
 
 export const api = {
   state: (): Promise<BoardState> => get('/api/state'),
-  card: (id: string): Promise<CardDetail> => get(`/api/card?id=${encodeURIComponent(id)}`),
-  prompt: (id: string, role: PromptName): Promise<{ prompt: string }> => get(`/api/prompt?${query({ id, role })}`),
+  card: (name: string): Promise<CardDetail> => get(`/api/card?name=${encodeURIComponent(name)}`),
+  prompt: (name: string, role: PromptName): Promise<{ prompt: string }> => get(`/api/prompt?${query({ name, role })}`),
   createCard: (body: {
     title: string;
     body: string;
     project: string;
     priority: number;
   }): Promise<{ card: CardSummary }> => post('/api/card', body),
-  editCard: (body: CardPatch & { id: string }): Promise<{ card: CardSummary }> => post('/api/card/edit', body),
-  moveCard: (id: string, to: string): Promise<{ card: CardSummary }> => post('/api/card/move', { id, to }),
-  deleteCard: (id: string): Promise<{ column: string }> => post('/api/card/delete', { id }),
+  editCard: (body: CardPatch & { name: string }): Promise<{ card: CardSummary }> => post('/api/card/edit', body),
+  moveCard: (name: string, to: string): Promise<{ card: CardSummary }> => post('/api/card/move', { name, to }),
+  deleteCard: (name: string): Promise<{ column: string }> => post('/api/card/delete', { name }),
   addColumn: (name: string): Promise<{ added: string }> => post('/api/columns', { action: 'add', name }),
   deleteColumn: (name: string): Promise<{ deleted: string }> => post('/api/columns', { action: 'delete', name }),
   addProject: (body: { name: string; path: string }): Promise<{ project: Project }> => post('/api/project', body),
   sendMessage: (thread: string, text: string): Promise<{ file: string }> => post('/api/chat', { q: thread, text }),
-  attachCard: (id: string, file: Blob, name: string): Promise<{ file: string }> =>
-    upload(`/api/attach?${query({ card: id, name })}`, file),
+  attachCard: (name: string, file: Blob, filename: string): Promise<{ file: string }> =>
+    upload(`/api/attach?${query({ card: name, name: filename })}`, file),
   attachThread: (thread: string, file: Blob, name: string): Promise<{ file: string }> =>
     upload(`/api/chat-attach?${query({ q: thread, name })}`, file),
   login: (password: string): Promise<{ ok: true }> => post('/api/login', { password }),
+  boardDefault: (): Promise<unknown> => post('/api/board/default'),
+  boardMigrate: (path: string, force = false): Promise<MoveResult> => post('/api/board/migrate', { path, force }),
 };

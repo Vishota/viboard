@@ -8,12 +8,12 @@ const props = defineProps<{ card: CardSummary }>();
 
 function onDragStart(event: DragEvent): void {
   if (event.dataTransfer === null) return;
-  event.dataTransfer.setData('text/plain', props.card.id);
+  event.dataTransfer.setData('text/plain', props.card.name);
   event.dataTransfer.effectAllowed = 'move';
 }
 
 function open(): void {
-  openModal(CardModal, { id: props.card.id });
+  openModal(CardModal, { name: props.card.name });
 }
 </script>
 

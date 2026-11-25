@@ -1,6 +1,6 @@
 {
   "name": "viboard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File-based task board: Trello for you, ls and cat for your AI agent",
   "license": "GPL-3.0-only",
   "author": "Vishota",

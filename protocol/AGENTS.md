@@ -32,7 +32,7 @@ CLI: `npx viboard <command>` (below — `viboard`; `viboard help` lists every co
     lock-<tag>/                taken — by you or another session
 ```
 
-A card's name is meant to be read in `ls`: `vishota.com-P1-003-tipografika` — project, priority (1 is the highest), id, a short title. Cards are referenced by id: `003-tipografika`. Never cache a card's path — its column can change: `viboard find 003`.
+A card's name is meant to be read in `ls`: `vishota.com-P1-003-tipografika` — project, priority (1 is the highest), id, a short title. Cards are referenced by id: `003-tipografika`. Never cache a card's path — its column can change: `viboard find 003`. The folder is also renamed when the owner changes the priority or the project: right before writing into a card by hand, run `viboard find <id>` again. A write to a path you read earlier brings the old folder back and splits the card in two.
 
 Status: `backlog` — the task is not ready · `todo` — ready to take · `doing` — in progress · `blocked` — waiting for the owner or a dependency · `review` — waiting for verification · `done` — closed.
 

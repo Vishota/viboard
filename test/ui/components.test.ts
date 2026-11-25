@@ -50,6 +50,7 @@ const card = (extra: Partial<CardSummary> = {}): CardSummary => ({
 
 const board = (cards: CardSummary[] = []): BoardState => ({
   root: 'C:/boards/demo',
+  board: { path: 'C:/boards/demo', source: 'default', defaultPath: 'C:/boards/demo', isDefault: true, exists: true },
   version: '0.1.0',
   columns: ['backlog', 'todo', 'doing', 'blocked', 'review', 'done'],
   cards,

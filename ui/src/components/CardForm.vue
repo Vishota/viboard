@@ -4,7 +4,9 @@ import { api } from '../api';
 import { state, sync } from '../store';
 
 /** Карточка в режиме правки; без неё — создание новой. */
-const props = defineProps<{ card?: { id: string; title: string; body: string; project: string; priority: number } }>();
+const props = defineProps<{
+  card?: { name: string; title: string; body: string; project: string; priority: number };
+}>();
 const emit = defineEmits<{ close: []; saved: [] }>();
 const close = (): void => emit('close');
 
@@ -47,7 +49,7 @@ async function submit(): Promise<void> {
       projectId = (await api.addProject({ name: projectName.value, path: projectPath.value })).project.id;
     }
     const fields = { title: title.value, body: body.value, project: projectId, priority: priority.value };
-    if (props.card) await api.editCard({ id: props.card.id, ...fields });
+    if (props.card) await api.editCard({ name: props.card.name, ...fields });
     else await api.createCard(fields);
     try {
       localStorage.setItem(LAST_PROJECT, projectId);

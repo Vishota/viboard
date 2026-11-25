@@ -1,9 +1,9 @@
 // Проход менеджера — видимость, не принуждение (аксиома А7): чек-лист протокола, вычисленный по файловой системе.
 // Суждение остаётся за менеджером; здесь только факты и готовые команды.
 
-import { renameSync } from 'node:fs';
+import { existsSync, renameSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { expectedName, listCards, readCardDoc, readColumns, readEntries } from './board.js';
+import { expectedName, listCards, listGhosts, readCardDoc, readColumns, readEntries } from './board.js';
 import { metaList } from './frontmatter.js';
 import { isRealDir, listDirs, listFiles, movePath, readText } from './fs.js';
 import { LEGACY_LOCK, LOCK, LOCK_STALE_MS, WIP_LIMIT, parseEntryName } from './names.js';
@@ -118,10 +118,22 @@ export function checkBoard(board: string, options: CheckOptions): Finding[] {
     if (!f.startsWith('.') && !parseEntryName(f)) add('warn', `log/${f}: name is out of format${formatHint(f)}`);
   }
 
-  const names = new Set(cards.map((c) => c.name));
+  // один id — несколько папок: открытие по id ломается (карточка 050). Появляется, когда кто-то писал
+  // в старый путь после переименования (смена приоритета) — такой «призрак» без README убирает viboard fix.
+  const idHolders = new Map<string, string[]>();
+  for (const c of cards) idHolders.set(c.id, [...(idHolders.get(c.id) ?? []), c.name]);
+  for (const [id, names] of idHolders) {
+    if (names.length > 1) add('error', `id ${id} is used by ${names.length} cards: ${names.join(', ')}`);
+  }
+  const real = new Set(cards.map((c) => c.name));
+  for (const ghost of listGhosts(board)) {
+    const owner = idHolders.get(ghost.id)?.length ? ` of ${idHolders.get(ghost.id)?.join(', ')}` : '';
+    add('error', `${ghost.column}/${ghost.name}: a leftover folder${owner} without README — viboard fix merges it`);
+  }
   for (const col of readColumns(board)) {
     for (const d of listDirs(join(board, col))) {
-      if (!names.has(d)) add('info', `${col}/${d}: not a card — remove it from the column`);
+      if (!real.has(d) && !isCardFolder(board, col, d))
+        add('info', `${col}/${d}: not a card — remove it from the column`);
     }
   }
 
@@ -129,9 +141,36 @@ export function checkBoard(board: string, options: CheckOptions): Finding[] {
   return out.sort((a, b) => order[a.level] - order[b.level]);
 }
 
+const isCardFolder = (board: string, column: string, name: string): boolean =>
+  listGhosts(board).some((g) => g.column === column && g.name === name);
+
+/** «Призрак» — старый путь карточки без README: его log/ и assets/ переносятся в настоящую карточку, сам он удаляется. */
+function mergeGhosts(board: string, done: string[]): void {
+  for (const ghost of listGhosts(board)) {
+    const target = listCards(board).find((c) => c.id === ghost.id);
+    if (!target) {
+      done.push(`${ghost.column}/${ghost.name}: not merged — no card with id ${ghost.id} on the board`);
+      continue;
+    }
+    for (const sub of ['log', 'assets']) {
+      for (const file of listFiles(join(ghost.dir, sub))) {
+        if (existsSync(join(target.dir, sub, file))) {
+          done.push(`${ghost.name}/${sub}/${file}: kept in place, the card already has it`);
+          continue;
+        }
+        movePath(join(ghost.dir, sub, file), join(target.dir, sub, file));
+        done.push(`${ghost.name}/${sub}/${file} → ${target.name}/${sub}/${file}`);
+      }
+    }
+    rmSync(ghost.dir, { recursive: true, force: true });
+    done.push(`${ghost.column}/${ghost.name}: leftover folder removed`);
+  }
+}
+
 /** Безопасные исправления: имена карточек приводятся к их frontmatter (проект, приоритет, id), старые локи — к новому имени. */
 export function fixBoard(board: string): string[] {
   const done: string[] = [];
+  mergeGhosts(board, done);
   for (const c of listCards(board)) {
     if (c.lockedBy !== null) {
       const legacy = join(c.dir, `${LEGACY_LOCK}${c.lockedBy}`);

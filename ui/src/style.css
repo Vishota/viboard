@@ -984,3 +984,30 @@ a {
   top: 6px;
   right: 6px;
 }
+
+/* --- окно «Board» (карточка 047) --- */
+
+.board-facts {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px 12px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.board-facts span {
+  color: var(--dim);
+}
+
+.board-facts code {
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.board-hint {
+  color: var(--dim);
+  font-size: 13px;
+  margin: 10px 0;
+}

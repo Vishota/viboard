@@ -2,7 +2,8 @@
 
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { DEFAULT_COLUMNS, ENV_BOARD, defaultBoard } from '../core/board.js';
+import { DEFAULT_COLUMNS } from '../core/board.js';
+import { boardInfo, describeBoard } from '../core/home.js';
 import { APP } from '../core/names.js';
 import { PROTOCOL_DIR, toPosix } from '../core/paths.js';
 import { clearRun, openBrowser, probe, readRun, writeRun } from '../core/run.js';
@@ -42,15 +43,9 @@ export function linkProjectAgents(project: string, cli: string): boolean {
 /** `viboard init [--here | --board <путь>]`: доска, проекты, протокол, git. */
 export async function cmdInit(args: Args, thenUi: boolean): Promise<number> {
   const explicit = option(args, 'board');
-  const env = process.env[ENV_BOARD]?.trim();
   const here = flag(args, 'here');
-  const target = here
-    ? resolve('board')
-    : explicit !== undefined
-      ? resolve(explicit)
-      : env !== undefined && env !== ''
-        ? resolve(env)
-        : defaultBoard();
+  // без аргументов доска создаётся там, куда приходит bare-запуск: default из config.json или папка пользователя
+  const target = here ? resolve('board') : explicit !== undefined ? resolve(explicit) : boardInfo().path;
   const result = await initBoard({
     board: target,
     project: projectFromDir(process.cwd(), option(args, 'project')),
@@ -66,6 +61,9 @@ export async function cmdInit(args: Args, thenUi: boolean): Promise<number> {
   if (result.protocol.length > 0) say(`  protocol: ${result.protocol.join(', ')}`);
   if (result.git) say('  git: repository created');
   if (linked) say('  project AGENTS.md: link to the board added');
+  if (!boardInfo().isDefault) {
+    say(`  not the default board — make it so: viboard board set ${toPosix(result.board)}`);
+  }
   if (thenUi) return cmdUi(args, result.board);
   say('next: viboard ui   →  http://127.0.0.1:8777');
   return 0;
@@ -73,10 +71,11 @@ export async function cmdInit(args: Args, thenUi: boolean): Promise<number> {
 
 /** `viboard ui`: локальный интерфейс. Уже запущено — просто открывает браузер; иначе сервер живёт до Ctrl+C. */
 export async function cmdUi(args: Args, knownBoard?: string): Promise<number> {
+  const info = boardInfo(option(args, 'board'));
   const board = knownBoard ?? requireBoard(args);
   const open = !flag(args, 'no-open');
   heading();
-  say(`board   ${toPosix(board)}`);
+  say(`board   ${describeBoard(knownBoard === undefined ? info : boardInfo(board))}`);
 
   const running = readRun(board);
   if (running && (await probe(running))) {

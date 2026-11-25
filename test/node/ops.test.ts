@@ -257,7 +257,8 @@ describe('треды', () => {
     expect(postOwnerMessage(board, thread, 'Три')).toBe('answer.md');
     expect(readText(join(board, 'questions', thread, 'answer.md'))).toBe('Три\n');
     const second = postOwnerMessage(board, thread, 'И кнопку добавить');
-    expect(second).toMatch(/^2026-11-23T\d{6}Z-owner-msg\.md$/u);
+    // Сообщение владельца пишется реальными часами сервера, а не `now` сессии.
+    expect(second).toMatch(/^\d{4}-\d{2}-\d{2}T\d{6}Z-owner-msg\.md$/u);
     const attachment = postOwnerAttachment(board, thread, 'скрин..png', Buffer.from('png'));
     expect(attachment).toMatch(/-owner-att-скрин\.\.png$/u);
 

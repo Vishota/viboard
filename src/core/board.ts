@@ -3,7 +3,7 @@
 
 import { readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { unquote, metaInt, metaStr, parseDoc, type Doc } from './frontmatter.js';
 import { isRealDir, isRealFile, listDirs, listFiles, mtimeMs, readText, writeAtomic } from './fs.js';
 import { APP, ID_RE, LEGACY_LOCK, LOCK, cardName, parseCardName, parseEntryName, type Verdict } from './names.js';
@@ -16,18 +16,9 @@ const NOT_COLUMNS = new Set(['questions', 'log', 'templates']);
 export const COLUMN_RE = /^[a-z][a-z0-9-]{1,23}$/;
 export const ENV_BOARD = `${APP}_BOARD`.toUpperCase();
 
-export const defaultBoard = (): string => join(homedir(), `.${APP}`, 'board');
-export const configDir = (): string => join(homedir(), `.${APP}`);
-
-/** 1) явный путь · 2) $VIBOARD_BOARD · 3) ./board, если это доска · 4) ~/.viboard/board. */
-export function resolveBoard(explicit?: string): string {
-  const e = explicit?.trim();
-  if (e) return resolve(e);
-  const env = process.env[ENV_BOARD]?.trim();
-  if (env) return resolve(env);
-  const local = resolve('board');
-  return isBoard(local) ? local : defaultBoard();
-}
+export const defaultBoard = (): string => join(configDir(), 'board');
+// $VIBOARD_HOME переносит настройки (config.json, run/) — нужно тестам и переносимой exe-версии.
+export const configDir = (): string => process.env[`${APP}_HOME`.toUpperCase()] || join(homedir(), `.${APP}`);
 
 export const isBoard = (path: string): boolean =>
   isRealFile(join(path, 'columns.yml')) || isRealDir(join(path, 'todo'));
@@ -120,13 +111,41 @@ export function readCard(board: string, column: string, name: string): Card {
   };
 }
 
+const isCardLike = (name: string): boolean => parseCardName(name) !== null || /^\d{3,}-/u.test(name);
+
+/** Каталоги-«призраки»: выглядят как карточки, но без README — остаток старого пути после переименования. */
+export function listGhosts(board: string): { column: string; name: string; dir: string; id: string }[] {
+  const out: { column: string; name: string; dir: string; id: string }[] = [];
+  for (const column of readColumns(board)) {
+    for (const name of listDirs(join(board, column))) {
+      const dir = join(board, column, name);
+      if (isCardLike(name) && !isRealFile(join(dir, 'README.md'))) {
+        out.push({ column, name, dir, id: parseCardName(name)?.id ?? name });
+      }
+    }
+  }
+  return out;
+}
+
+/** Папку карточки могли переименовать (смена приоритета) или увести в другую колонку, пока держатель
+ * держал старый путь. Запись по мёртвому пути пересоздала бы старую папку — и появились бы два каталога с одним id. */
+export function assertAlive(card: Card): void {
+  if (!isRealDir(card.dir)) {
+    throw new Fail(
+      `${card.id}: its folder was renamed or moved — find it again before writing: viboard find ${card.id}`,
+    );
+  }
+}
+
 /** Все карточки всех колонок; внутри колонки — по имени (проект → приоритет → id). */
 export function listCards(board: string): Card[] {
   const out: Card[] = [];
   for (const column of readColumns(board)) {
     for (const name of listDirs(join(board, column))) {
-      // новый формат <проект>-P<n>-<NNN>-<слаг> и старый <NNN>-<слаг> (до переименования через fix)
-      if (parseCardName(name) || /^\d{3,}-/u.test(name)) out.push(readCard(board, column, name));
+      // новый формат <проект>-P<n>-<NNN>-<слаг> и старый <NNN>-<слаг>; каталог без README — не карточка (призрак)
+      if (isCardLike(name) && isRealFile(join(board, column, name, 'README.md'))) {
+        out.push(readCard(board, column, name));
+      }
     }
   }
   return out;
@@ -137,10 +156,11 @@ export function findCards(board: string, ref: string): Card[] {
   const r = ref.trim();
   if (!r || /[/\\]/u.test(r)) throw new Fail('expected a card id or a name fragment — without a path');
   const all = listCards(board);
-  const exactId = all.filter((c) => c.id === r);
-  if (exactId.length > 0) return exactId;
+  // точное имя папки уникально всегда — оно побеждает id: два каталога с одним id не ломают обращение по имени
   const exactName = all.filter((c) => c.name === r);
   if (exactName.length > 0) return exactName;
+  const exactId = all.filter((c) => c.id === r);
+  if (exactId.length > 0) return exactId;
   return all.filter((c) => c.name.includes(r) || c.id.includes(r));
 }
 
@@ -150,7 +170,9 @@ export function oneCard(board: string, ref: string): Card {
   const first = hits[0];
   if (hits.length === 1 && first) return first;
   if (hits.length === 0) throw new Fail(`card not found: «${ref}» — viboard ls lists the board`);
-  throw new Fail(`«${ref}» matches several cards; use a more precise id:\n  ${hits.map((c) => c.name).join('\n  ')}`);
+  throw new Fail(
+    `«${ref}» matches several cards — one id, several folders (viboard check lists them). Use the full folder name:\n  ${hits.map((c) => c.name).join('\n  ')}`,
+  );
 }
 
 export const summaryOf = (c: Card): CardSummary => ({

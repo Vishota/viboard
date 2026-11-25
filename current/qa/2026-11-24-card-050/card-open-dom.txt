@@ -1,0 +1,42 @@
+- banner:
+  - link "viboard":
+    - /url: https://github.com/Vishota/viboard
+  - generic "C:\\Users\\Vishota\\AppData\\Local\\Temp\\tmp.bbqhnv0Eps\\board"
+  - button "+ Task"
+  - button "Agent"
+  - button "Board"
+  - button "Chat"
+- main:
+  - heading "backlog" [level=2]
+  - generic: "0"
+  - paragraph: empty
+  - heading "todo" [level=2]
+  - generic: "1"
+  - article:
+    - generic: Card to open
+    - generic: demo
+    - generic: P3
+  - heading "doing" [level=2]
+  - generic: "0"
+  - paragraph: empty
+  - heading "blocked" [level=2]
+  - generic: "0"
+  - paragraph: empty
+  - heading "review" [level=2]
+  - generic: "0"
+  - paragraph: empty
+  - heading "done" [level=2]
+  - generic: "0"
+  - paragraph: empty
+  - button "+ column"
+- complementary
+- dialog [active]:
+  - button "✕"
+  - heading "Card to open" [level=2]
+  - paragraph: demo-P3-001-card-to-open · todo/ · demo · P3
+  - paragraph: text
+  - button "Edit"
+  - button "Attach file"
+  - button "Copy for agent"
+  - button "Delete"
+- status

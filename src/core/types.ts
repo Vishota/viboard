@@ -118,6 +118,7 @@ export interface Finding {
 /** Всё, что UI нужно для отрисовки: проекция файловой системы, без собственного состояния. */
 export interface BoardState {
   root: string;
+  board: { path: string; source: string; defaultPath: string; isDefault: boolean; exists: boolean };
   version: string;
   columns: string[];
   cards: CardSummary[];
@@ -126,4 +127,32 @@ export interface BoardState {
   /** Тексты заданий для новых сессий (тот же источник, что `viboard prompt`). */
   prompts: Record<'executor' | 'reviewer' | 'manager' | 'board', string>;
   protocol: { installed: string | null; current: string };
+}
+
+// --- одна доска на устройство (карточка 047) ---
+
+export interface Config {
+  /** Папка доски по умолчанию; отсутствует — ~/.viboard/board. */
+  board?: string;
+}
+
+export type BoardSource = 'flag' | 'env' | 'config' | 'default';
+
+export interface BoardInfo {
+  path: string;
+  source: BoardSource;
+  /** Папка, в которую приходит запуск без аргументов. */
+  defaultPath: string;
+  isDefault: boolean;
+  exists: boolean;
+}
+
+export interface MoveResult {
+  from: string;
+  to: string;
+  files: number;
+  /** Файлы, которые не удалось удалить из старой папки (заняты процессами); копия в новой папке полная. */
+  leftBehind: string[];
+  /** Локи, снятые вместе со старой папкой при --force. */
+  forcedLocks: string[];
 }

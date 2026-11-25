@@ -4,6 +4,7 @@
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import {
+  assertAlive,
   expectedName,
   listCards,
   oneCard,
@@ -125,12 +126,14 @@ export function createCard(board: string, input: CardInput): Card {
 /** Правка frontmatter/постановки; при смене проекта или приоритета каталог переименовывается под них. */
 export function editCard(board: string, ref: string, patch: CardPatch): Card {
   let card = oneCard(board, ref);
+  assertAlive(card);
   const doc = readCardDoc(card);
   const fm: Record<string, FieldValue | number | undefined> = {};
   if (patch.title !== undefined) fm.title = requireText(patch.title, 'task title');
   if (patch.body !== undefined && patch.body.trim() === '') throw new Fail('description cannot be empty');
   if (patch.project !== undefined) fm.project = parseProjectId(patch.project);
   if (patch.priority !== undefined) fm.priority = parsePriority(patch.priority);
+  assertAlive(card);
   writeAtomic(join(card.dir, 'README.md'), formatDoc(doc, fm, patch.body ?? doc.body));
   card = readCard(board, card.column, card.name);
   return renameTo(board, card, expectedName(card));
@@ -232,6 +235,7 @@ export function addProject(board: string, input: { id?: string; name: string; pa
 // --- лок и записи ---
 
 export function lockCard(card: Card, session: string): Card {
+  assertAlive(card);
   const tag = sessionTag(session);
   try {
     mkdirSync(join(card.dir, `${LOCK}${tag}`)); // атомарный клэйм: не создался — занято
@@ -270,6 +274,7 @@ const entryMeta = (entry: LogInput & { card: string }): Record<string, FieldValu
 
 /** Запись в log/ карточки: <время>-<тег>-<тип>.md (карточка известна по каталогу). Возвращает имя файла. */
 export function addLog(card: Card, entry: LogInput): string {
+  assertAlive(card);
   const text = requireText(entry.text, 'entry text');
   const dir = join(card.dir, 'log');
   ensureDir(dir);
@@ -382,7 +387,9 @@ export function ask(
     text: `${firstLine} → questions/${token}/`,
     now,
   });
-  return { card: moveTo(board, fresh, 'blocked'), thread: token };
+  // в blocked/ уходят только карточки, которые ждали работы; review/ и прочие остаются на месте
+  const moved = fresh.column === 'doing' || fresh.column === 'todo' ? moveTo(board, fresh, 'blocked') : fresh;
+  return { card: moved, thread: token };
 }
 
 export interface UnblockOptions {

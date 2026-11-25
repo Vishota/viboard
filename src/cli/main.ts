@@ -1,6 +1,8 @@
 // viboard — точка входа CLI. Одна команда — один шаг протокола; вывод читается человеком и агентом.
 
-import { isBoard, resolveBoard } from '../core/board.js';
+import { isBoard } from '../core/board.js';
+import { boardInfo } from '../core/home.js';
+import { cmdBoard } from './board.js';
 import { VERSION } from '../core/version.js';
 import { option, parseArgs, type Args } from './args.js';
 import {
@@ -22,8 +24,17 @@ import { say, sayError } from './io.js';
 
 const USAGE = `viboard ${VERSION} — file-based task board: Trello for the owner, ls and cat for an agent
 
+For an AI agent
+  viboard is a task board that is just a folder of files: no database, no API. You read tasks
+  with ls and cat and change them only through the commands below.
+  1. viboard prompt — prints a ready briefing: the board folder and its rules file
+  2. Read that file, <board>/AGENTS.md — about 80 lines, the whole rule set
+  3. viboard ls → pick a free card → viboard session → viboard claim <id>
+  Need the owner? viboard ask <id> "<question>". Done? viboard review <id> "<what was done>".
+
 Start
-  viboard                              no board — creates one and opens the UI; otherwise opens the UI
+  viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI
+  viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI
   viboard init [--here | --board <path>] [--project <name>] [--update-protocol] [--no-git]
   viboard ui [--port 8777] [--no-open] [--password <password> [--public]]
 
@@ -50,13 +61,19 @@ Manager
 By hand
   viboard card add --project <id> --title "<title>" [--body "<text>" | --body-file F] [--priority 1-5] [--column C]
   viboard stamp --session <tag> --card <id|-> --kind <type> [--dir <directory>]
-  viboard shell                            shell commands for your OS`;
+  viboard shell                            shell commands for your OS
+
+Board folder
+  viboard board                            where the board is and which folder is the default
+  viboard board set <path>                 make an existing board the default
+  viboard board move <path> [--force]     move the board to another folder (refuses while agents hold locks)`;
 
 type Handler = (args: Args) => number | Promise<number>;
 
 const COMMANDS: Record<string, Handler> = {
   init: (args) => cmdInit(args, false),
   ui: (args) => cmdUi(args),
+  board: cmdBoard,
   session: cmdSession,
   ls: cmdLs,
   show: cmdShow,
@@ -80,7 +97,7 @@ const COMMANDS: Record<string, Handler> = {
 
 /** Запуск без команды: есть доска — UI; нет — init и сразу UI. */
 async function runDefault(args: Args): Promise<number> {
-  const board = resolveBoard(option(args, 'board'));
+  const board = boardInfo(option(args, 'board')).path;
   return isBoard(board) ? cmdUi(args, board) : cmdInit(args, true);
 }
 

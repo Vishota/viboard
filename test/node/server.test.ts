@@ -1,3 +1,4 @@
+import { VERSION } from '../../src/core/version.js';
 import http, { type IncomingMessage } from 'node:http';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -102,7 +103,7 @@ describe('локальный режим', () => {
     expect(page.body).toContain('<title>viboard</title>');
     expect(page.headers['content-security-policy']).toContain("default-src 'self'");
     expect(page.headers['content-security-policy']).not.toContain('unsafe-inline');
-    expect(page.headers['x-powered-by']).toBe('viboard/0.1.0');
+    expect(page.headers['x-powered-by']).toBe(`viboard/${VERSION}`);
     expect(page.headers['x-frame-options']).toBe('DENY');
     expect(page.headers['x-content-type-options']).toBe('nosniff');
     expect(page.headers['cache-control']).toBe('no-store');
@@ -161,7 +162,7 @@ describe('локальный режим', () => {
     expect(parsed.projects.map((p) => p.id)).toEqual(['test']);
     expect(Object.keys(parsed.prompts).sort()).toEqual(['board', 'executor', 'manager', 'reviewer']);
     expect(parsed.prompts.board).toContain('AGENTS.md');
-    expect(parsed.protocol).toEqual({ installed: '0.1.0-test', current: '0.1.0' });
+    expect(parsed.protocol).toEqual({ installed: '0.1.0-test', current: VERSION });
 
     const created = await call(
       app.port,

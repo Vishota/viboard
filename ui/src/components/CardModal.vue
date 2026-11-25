@@ -9,7 +9,7 @@ import { projectName, state, sync } from '../store';
 import CardForm from './CardForm.vue';
 import ModalShell from './ModalShell.vue';
 
-const props = defineProps<{ id: string }>();
+const props = defineProps<{ name: string }>();
 const emit = defineEmits<{ close: [] }>();
 const modalId = inject(MODAL_ID);
 
@@ -17,7 +17,7 @@ const detail = ref<CardDetail | null>(null);
 const failure = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const summary = computed(() => state.value?.cards.find((c) => c.id === props.id));
+const summary = computed(() => state.value?.cards.find((c) => c.name === props.name));
 /** Перечитывать, только когда карточка на доске что-то поменяла. */
 const signature = computed(() => {
   const c = summary.value;
@@ -33,7 +33,7 @@ async function load(): Promise<void> {
     return;
   }
   try {
-    detail.value = await api.card(props.id);
+    detail.value = await api.card(props.name);
     failure.value = '';
   } catch (e) {
     failure.value = e instanceof Error ? e.message : String(e);
@@ -73,7 +73,7 @@ function attach(event: Event): void {
     toast('File is larger than 20 MB');
     return;
   }
-  void run(api.attachCard(props.id, file, file.name));
+  void run(api.attachCard(props.name, file, file.name));
 }
 
 async function remove(): Promise<void> {
@@ -83,12 +83,12 @@ async function remove(): Promise<void> {
     message: `«${title}» will be deleted with its log and attachments. It can only be restored from git history.`,
     confirmLabel: 'Delete',
   });
-  if (ok) void run(api.deleteCard(props.id), () => closeModal(modalId));
+  if (ok) void run(api.deleteCard(props.name), () => closeModal(modalId));
 }
 
 async function copyForAgent(): Promise<void> {
   try {
-    const { prompt } = await api.prompt(props.id, 'executor');
+    const { prompt } = await api.prompt(props.name, 'executor');
     await copyText(prompt);
     toast('Briefing copied', 'ok');
   } catch (e) {
@@ -102,7 +102,7 @@ async function copyForAgent(): Promise<void> {
     <CardForm
       v-if="editing && detail"
       :card="{
-        id: detail.card.id,
+        name: detail.card.name,
         title: detail.card.title,
         body: detail.card.body,
         project: detail.card.project,
@@ -123,10 +123,10 @@ async function copyForAgent(): Promise<void> {
       <div class="md" v-html="html"></div>
       <div v-if="detail.card.assets.length > 0" class="assets">
         <template v-for="name in detail.card.assets" :key="name">
-          <a v-if="isImage(name)" :href="assetUrl({ card: detail.card.id, f: name })" target="_blank" rel="noopener">
-            <img :src="assetUrl({ card: detail.card.id, f: name })" :alt="name" loading="lazy" />
+          <a v-if="isImage(name)" :href="assetUrl({ card: detail.card.name, f: name })" target="_blank" rel="noopener">
+            <img :src="assetUrl({ card: detail.card.name, f: name })" :alt="name" loading="lazy" />
           </a>
-          <a v-else :href="assetUrl({ card: detail.card.id, f: name })">
+          <a v-else :href="assetUrl({ card: detail.card.name, f: name })">
             {{ attachmentName(name) }}<span class="size">{{ formatSize(detail.assetSizes[name] ?? 0) }}</span>
           </a>
         </template>
