@@ -6,6 +6,7 @@ import { draftOf, saveDraft } from '../drafts';
 import { cardTitle, sync } from '../store';
 import { toast } from '../modal';
 import MessageBubble from './MessageBubble.vue';
+import { t } from '../i18n';
 
 const props = defineProps<{ thread: Thread }>();
 const emit = defineEmits<{ back: []; close: [] }>();
@@ -41,7 +42,7 @@ const variants = computed(() =>
 /** Быстрые ответы — до первого ответа владельца, как в первом сообщении треда. */
 const quick = computed(() => variants.value.length > 0 && !props.thread.answered);
 
-const title = computed(() => (props.thread.card === '' ? 'Question' : cardTitle(props.thread.card)));
+const title = computed(() => (props.thread.card === '' ? t('Question') : cardTitle(props.thread.card)));
 
 function scrollToEnd(): void {
   const el = list.value;
@@ -105,7 +106,7 @@ async function attach(event: Event): Promise<void> {
   target.value = '';
   if (!file || busy.value) return;
   if (file.size > MAX_FILE) {
-    toast('File is larger than 20 MB');
+    toast(t('File is larger than 20 MB'));
     return;
   }
   busy.value = true;
@@ -123,9 +124,9 @@ async function attach(event: Event): Promise<void> {
 <template>
   <div class="chat-thread">
     <header class="chat-head">
-      <button type="button" class="btn-sec btn-mini" title="Back to list" @click="emit('back')">‹</button>
+      <button type="button" class="btn-sec btn-mini" :title="t('Back to list')" @click="emit('back')">‹</button>
       <h2>{{ title }}</h2>
-      <button type="button" class="icon-btn" title="Close" @click="emit('close')">✕</button>
+      <button type="button" class="icon-btn" :title="t('Close')" @click="emit('close')">✕</button>
     </header>
     <div ref="list" class="msgs">
       <MessageBubble
@@ -142,17 +143,19 @@ async function attach(event: Event): Promise<void> {
       </button>
     </div>
     <div class="composer">
-      <button type="button" class="icon-btn composer-attach" title="Attach file" @click="fileInput?.click()">📎</button>
+      <button type="button" class="icon-btn composer-attach" :title="t('Attach file')" @click="fileInput?.click()">
+        📎
+      </button>
       <input ref="fileInput" type="file" hidden @change="attach" />
       <textarea
         ref="input"
         v-model="draft"
-        placeholder="Message"
+        :placeholder="t('Message')"
         rows="1"
         @keydown="onKeydown"
         @input="autosize"
       ></textarea>
-      <button type="button" class="btn" :disabled="busy" @click="send(draft)">Send</button>
+      <button type="button" class="btn" :disabled="busy" @click="send(draft)">{{ t('Send') }}</button>
     </div>
   </div>
 </template>

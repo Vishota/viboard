@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { api } from '../api';
 import { state, sync } from '../store';
+import { t } from '../i18n';
 
 /** Карточка в режиме правки; без неё — создание новой. */
 const props = defineProps<{
@@ -69,32 +70,32 @@ async function submit(): Promise<void> {
 <template>
   <form class="card-form" @submit.prevent="submit">
     <div class="field">
-      <label for="task-title">Title</label>
+      <label for="task-title">{{ t('Title') }}</label>
       <input id="task-title" v-model="title" name="title" required maxlength="200" autofocus />
     </div>
     <div class="field">
-      <label for="task-project">Project</label>
+      <label for="task-project">{{ t('Project') }}</label>
       <div class="row">
         <select id="task-project" v-model="project" name="project" required :disabled="addingProject">
           <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
         <button type="button" class="btn-sec btn-mini" @click="addingProject = !addingProject">
-          {{ addingProject ? 'Cancel' : 'New project' }}
+          {{ addingProject ? t('Cancel') : t('New project') }}
         </button>
       </div>
     </div>
     <template v-if="addingProject">
       <div class="field">
-        <label for="project-name">Project name</label>
+        <label for="project-name">{{ t('Project name') }}</label>
         <input id="project-name" v-model="projectName" name="projectName" required />
       </div>
       <div class="field">
-        <label for="project-path">Project folder</label>
-        <input id="project-path" v-model="projectPath" name="projectPath" placeholder="C:\projects\my-app" />
+        <label for="project-path">{{ t('Project folder') }}</label>
+        <input id="project-path" v-model="projectPath" name="projectPath" :placeholder="t('C:\projects\my-app')" />
       </div>
     </template>
     <div class="field">
-      <span>Priority</span>
+      <span>{{ t('Priority') }}</span>
       <div class="segment">
         <label v-for="n in PRIORITIES" :key="n">
           <input v-model="priority" type="radio" name="priority" :value="n" />
@@ -103,14 +104,14 @@ async function submit(): Promise<void> {
       </div>
     </div>
     <div class="field">
-      <label for="task-body">Description</label>
+      <label for="task-body">{{ t('Description') }}</label>
       <textarea id="task-body" v-model="body" name="body" required rows="7"></textarea>
     </div>
     <p v-if="error !== ''" class="form-error">{{ error }}</p>
     <div class="actions">
       <span class="grow" />
-      <button type="button" class="btn-sec" @click="close">Cancel</button>
-      <button type="submit" class="btn" :disabled="busy">{{ editing ? 'Save' : 'Create' }}</button>
+      <button type="button" class="btn-sec" @click="close">{{ t('Cancel') }}</button>
+      <button type="submit" class="btn" :disabled="busy">{{ editing ? t('Save') : t('Create') }}</button>
     </div>
   </form>
 </template>

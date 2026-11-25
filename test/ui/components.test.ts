@@ -6,6 +6,7 @@ import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
 import { cardMatches, filterActive, filters, resetFilters, chatOpen, state, stopPolling } from '../../ui/src/store';
+import { setLocale, t } from '../../ui/src/i18n';
 
 const T = Date.parse('2026-11-23T10:00:00Z');
 
@@ -287,10 +288,55 @@ describe('поиск и фильтры (карточка 044)', () => {
     state.value = board([card()]);
     const wrapper = mount(FilterBar, { attachTo: document.body });
     await wrapper.find('input[name="search"]').setValue('nothing-here');
-    expect(wrapper.find('.filter-count').text()).toBe('0 of 1');
+    expect(wrapper.find('.filter-count').text()).toBe('0 of 1 cards');
     await wrapper.find('button[title="Clear filters"]').trigger('click');
     expect(filters.query).toBe('');
     expect(wrapper.find('.filter-count').exists()).toBe(false);
     wrapper.unmount();
+  });
+});
+
+describe('локализация интерфейса (карточка 048)', () => {
+  afterEach(() => setLocale('en'));
+
+  it('переключатель меняет только представление; имена колонок и файлов не переводятся', async () => {
+    stubServer(() => board([card()]));
+    state.value = board([card()]);
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.find('header .btn').text()).toBe('+ Task');
+    expect(wrapper.findAll('.locale-item').map((b) => b.text())).toEqual(['Ru', 'En']);
+
+    await wrapper.findAll('.locale-item')[0]?.trigger('click');
+    expect(wrapper.find('header .btn').text()).toBe('+ Задача');
+    expect(wrapper.find('.column h2').text()).toBe('backlog'); // имя каталога
+    expect(wrapper.find('.filter-project option').text()).toBe('Все проекты');
+    expect(state.value.cards[0]?.name).toBe('app-P3-001-x'); // данные не тронуты
+    expect(t('Board moved to {path}', { path: 'C:/b' })).toBe('Доска перенесена в C:/b');
+    wrapper.unmount();
+  });
+
+  it('подписи фильтров переводятся (вживую: «In progress» оставался английским)', async () => {
+    setLocale('ru');
+    const wrapper = mount(FilterBar, { attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.text()).toContain('В работе');
+    expect(wrapper.text()).toContain('Ждёт ответа');
+    expect(wrapper.text()).not.toMatch(/In progress|Waiting for you/);
+    wrapper.unmount();
+  });
+  it('справка показывается при первом входе и больше не показывается', async () => {
+    localStorage.removeItem('viboard.onboarded');
+    stubServer(() => board([card()]));
+    const first = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(first.find('[role="dialog"] h3').text()).toBe('How viboard works');
+    expect(first.findAll('.help-steps li')).toHaveLength(3);
+    first.unmount();
+
+    const second = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(second.find('[role="dialog"]').exists()).toBe(false);
+    second.unmount();
   });
 });

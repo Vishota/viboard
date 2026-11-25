@@ -4,6 +4,7 @@ import type { Thread } from '@core/types';
 import { attachmentName, formatDateTime, preview, stampMs } from '../format';
 import { cardTitle, chatOpen, state } from '../store';
 import ThreadView from './ThreadView.vue';
+import { t } from '../i18n';
 
 /** Открытый тред; null — список. Живёт в панели и переживает закрытие чата. */
 const active = ref<string | null>(null);
@@ -18,7 +19,7 @@ function lastLine(t: Thread): string {
   return last.attachment === null ? preview(last.body) : `📎 ${attachmentName(last.attachment)}`;
 }
 
-const title = (t: Thread): string => (t.card === '' ? 'Question' : cardTitle(t.card));
+const title = (thread: Thread): string => (thread.card === '' ? t('Question') : cardTitle(thread.card));
 </script>
 
 <template>
@@ -27,11 +28,11 @@ const title = (t: Thread): string => (t.card === '' ? 'Question' : cardTitle(t.c
       <ThreadView v-if="thread" :thread="thread" @back="active = null" @close="chatOpen = false" />
       <template v-else>
         <header class="chat-head">
-          <h2>Chat</h2>
-          <button type="button" class="icon-btn" title="Close" @click="chatOpen = false">✕</button>
+          <h2>{{ t('Chat') }}</h2>
+          <button type="button" class="icon-btn" :title="t('Close')" @click="chatOpen = false">✕</button>
         </header>
         <div class="chat-list">
-          <p v-if="questions.length === 0" class="empty chat-empty">No messages</p>
+          <p v-if="questions.length === 0" class="empty chat-empty">{{ t('No messages') }}</p>
           <button v-for="t in questions" :key="t.dir" type="button" class="thread-row" @click="active = t.dir">
             <span class="dot" :class="{ unread: t.lastFrom === 'agent' }"></span>
             <span class="thread-main">

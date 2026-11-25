@@ -8,6 +8,7 @@ import { MODAL_ID, closeModal, confirmDialog, copyText, toast } from '../modal';
 import { projectName, state, sync } from '../store';
 import CardForm from './CardForm.vue';
 import ModalShell from './ModalShell.vue';
+import { t } from '../i18n';
 
 const props = defineProps<{ name: string }>();
 const emit = defineEmits<{ close: [] }>();
@@ -70,7 +71,7 @@ function attach(event: Event): void {
   input.value = '';
   if (!file) return;
   if (file.size > 20 * 1048576) {
-    toast('File is larger than 20 MB');
+    toast(t('File is larger than 20 MB'));
     return;
   }
   void run(api.attachCard(props.name, file, file.name));
@@ -79,9 +80,11 @@ function attach(event: Event): void {
 async function remove(): Promise<void> {
   const title = detail.value?.card.title ?? '';
   const ok = await confirmDialog({
-    title: 'Delete card',
-    message: `«${title}» will be deleted with its log and attachments. It can only be restored from git history.`,
-    confirmLabel: 'Delete',
+    title: t('Delete card'),
+    message: t('«{title}» will be deleted with its log and attachments. It can only be restored from git history.', {
+      title,
+    }),
+    confirmLabel: t('Delete'),
   });
   if (ok) void run(api.deleteCard(props.name), () => closeModal(modalId));
 }
@@ -90,7 +93,7 @@ async function copyForAgent(): Promise<void> {
   try {
     const { prompt } = await api.prompt(props.name, 'executor');
     await copyText(prompt);
-    toast('Briefing copied', 'ok');
+    toast(t('Briefing copied'), 'ok');
   } catch (e) {
     toast(e instanceof Error ? e.message : String(e));
   }
@@ -112,7 +115,7 @@ async function copyForAgent(): Promise<void> {
       @saved="saved"
     />
     <template v-else-if="detail">
-      <h2>{{ detail.card.title || 'Untitled' }}</h2>
+      <h2>{{ detail.card.title || t('Untitled') }}</h2>
       <p class="meta">
         {{ detail.card.name }} · {{ detail.card.column }}/ · {{ projectName(detail.card.project) }} · P{{
           detail.card.priority
@@ -141,15 +144,15 @@ async function copyForAgent(): Promise<void> {
         </article>
       </section>
       <div class="actions">
-        <button type="button" class="btn-sec" @click="edit">Edit</button>
-        <button type="button" class="btn-sec" @click="fileInput?.click()">Attach file</button>
+        <button type="button" class="btn-sec" @click="edit">{{ t('Edit') }}</button>
+        <button type="button" class="btn-sec" @click="fileInput?.click()">{{ t('Attach file') }}</button>
         <input ref="fileInput" type="file" hidden @change="attach" />
-        <button type="button" class="btn-sec" @click="copyForAgent">Copy for agent</button>
+        <button type="button" class="btn-sec" @click="copyForAgent">{{ t('Copy for agent') }}</button>
         <span class="grow" />
-        <button type="button" class="btn-danger" @click="remove">Delete</button>
+        <button type="button" class="btn-danger" @click="remove">{{ t('Delete') }}</button>
       </div>
     </template>
     <p v-else-if="failure !== ''" class="form-error">{{ failure }}</p>
-    <p v-else class="empty">Loading…</p>
+    <p v-else class="empty">{{ t('Loading…') }}</p>
   </ModalShell>
 </template>

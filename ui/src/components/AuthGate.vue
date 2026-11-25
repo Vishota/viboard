@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { api } from '../api';
 import { refresh } from '../store';
+import { t } from '../i18n';
 
 const password = ref('');
 const error = ref('');
@@ -27,13 +28,13 @@ async function submit(): Promise<void> {
     <form class="gate-card" @submit.prevent="submit">
       <span class="brand">viboard</span>
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">{{ t('Password') }}</label>
         <input id="password" v-model="password" type="password" name="password" required autofocus />
       </div>
       <p v-if="error !== ''" class="form-error">{{ error }}</p>
       <div class="actions">
         <span class="grow" />
-        <button type="submit" class="btn" :disabled="busy">Sign in</button>
+        <button type="submit" class="btn" :disabled="busy">{{ t('Sign in') }}</button>
       </div>
     </form>
   </div>

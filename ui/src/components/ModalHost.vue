@@ -26,7 +26,10 @@ function onDone(item: ModalItem, value: unknown): void {
 }
 
 onMounted(() => document.addEventListener('keydown', onKey));
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKey);
+  modals.splice(0); // окна переживают размонтирование приложения только вместе с ним
+});
 </script>
 
 <template>

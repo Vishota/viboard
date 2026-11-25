@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { t } from '../i18n';
 
 /** Оболочка модального окна: подложка, фокус на первый элемент с autofocus. Esc обрабатывает ModalHost. */
 withDefaults(defineProps<{ narrow?: boolean }>(), { narrow: false });
@@ -23,7 +24,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="overlay" @mousedown="onBackdrop">
     <div ref="panel" class="modal" :class="{ 'modal-narrow': narrow }" tabindex="-1" role="dialog" aria-modal="true">
-      <button type="button" class="icon-btn modal-close" title="Close" @click="emit('close')">✕</button>
+      <button type="button" class="icon-btn modal-close" :title="t('Close')" @click="emit('close')">✕</button>
       <slot />
     </div>
   </div>

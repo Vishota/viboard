@@ -3,6 +3,7 @@ import { inject } from 'vue';
 import { MODAL_ID, closeModal } from '../modal';
 import CardForm from './CardForm.vue';
 import ModalShell from './ModalShell.vue';
+import { t } from '../i18n';
 
 const modalId = inject(MODAL_ID);
 const close = (): void => closeModal(modalId);
@@ -10,7 +11,7 @@ const close = (): void => closeModal(modalId);
 
 <template>
   <ModalShell @close="close">
-    <h3>New task</h3>
+    <h3>{{ t('New task') }}</h3>
     <CardForm @close="close" @saved="close" />
   </ModalShell>
 </template>

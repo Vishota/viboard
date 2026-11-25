@@ -4,6 +4,7 @@ import { api } from '../api';
 import { MODAL_ID, closeModal } from '../modal';
 import { sync } from '../store';
 import ModalShell from './ModalShell.vue';
+import { t } from '../i18n';
 
 const modalId = inject(MODAL_ID);
 const name = ref('');
@@ -28,17 +29,17 @@ async function submit(): Promise<void> {
 
 <template>
   <ModalShell narrow>
-    <h3>New column</h3>
+    <h3>{{ t('New column') }}</h3>
     <form @submit.prevent="submit">
       <div class="field">
-        <label for="column-name">Name</label>
+        <label for="column-name">{{ t('Name') }}</label>
         <input id="column-name" v-model="name" name="column" required autofocus />
       </div>
       <p v-if="error !== ''" class="form-error">{{ error }}</p>
       <div class="actions">
         <span class="grow" />
-        <button type="button" class="btn-sec" @click="closeModal(modalId)">Cancel</button>
-        <button type="submit" class="btn" :disabled="busy">Create</button>
+        <button type="button" class="btn-sec" @click="closeModal(modalId)">{{ t('Cancel') }}</button>
+        <button type="submit" class="btn" :disabled="busy">{{ t('Create') }}</button>
       </div>
     </form>
   </ModalShell>

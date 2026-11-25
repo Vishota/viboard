@@ -4,6 +4,7 @@ import type { Message } from '@core/types';
 import { chatAssetUrl } from '../api';
 import { attachmentName, formatTime, isImage } from '../format';
 import { renderMarkdown } from '../markdown';
+import { t } from '../i18n';
 
 /** Пузырь чата. `text` подменяет тело (у первого сообщения агента варианты уходят в кнопки). */
 const props = defineProps<{ message: Message; thread: string; text?: string }>();
@@ -25,7 +26,7 @@ const time = computed(() => (props.message.time === null ? '' : formatTime(props
   <div v-else-if="message.side === 'user'" class="msg user">{{ message.body }}</div>
   <!-- Текст агента: renderMarkdown экранирует всё, разметка строится поверх. -->
   <div v-else class="msg agent">
-    <div class="msg-line">agent · {{ message.session }}{{ time === '' ? '' : ` · ${time}` }}</div>
+    <div class="msg-line">{{ t('agent') }} · {{ message.session }}{{ time === '' ? '' : ` · ${time}` }}</div>
     <div class="md" v-html="html"></div>
   </div>
 </template>

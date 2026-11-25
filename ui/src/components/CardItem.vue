@@ -3,6 +3,7 @@ import type { CardSummary } from '@core/types';
 import { openModal } from '../modal';
 import { projectName } from '../store';
 import CardModal from './CardModal.vue';
+import { t } from '../i18n';
 
 const props = defineProps<{ card: CardSummary }>();
 
@@ -25,7 +26,7 @@ function open(): void {
     @dragstart="onDragStart"
     @click="open"
   >
-    <span class="card-title">{{ card.title || 'Untitled' }}</span>
+    <span class="card-title">{{ card.title || t('Untitled') }}</span>
     <span class="chips">
       <span v-if="card.lockedBy !== null" class="chip chip-lock">lock-{{ card.lockedBy }}</span>
       <span class="chip">{{ projectName(card.project) }}</span>

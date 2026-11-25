@@ -4,6 +4,7 @@ import { api } from '../api';
 import { confirmDialog, toast } from '../modal';
 import { cardMatches, filterActive, state, sync } from '../store';
 import CardItem from './CardItem.vue';
+import { t } from '../i18n';
 
 const props = defineProps<{ column: string }>();
 
@@ -28,9 +29,9 @@ function onDrop(event: DragEvent): void {
 
 async function remove(): Promise<void> {
   const ok = await confirmDialog({
-    title: 'Delete column',
-    message: `Column «${props.column}» is empty and will be deleted.`,
-    confirmLabel: 'Delete',
+    title: t('Delete column'),
+    message: t('Column «{name}» is empty and will be deleted.', { name: props.column }),
+    confirmLabel: t('Delete'),
   });
   if (ok) void run(api.deleteColumn(props.column));
 }
@@ -51,13 +52,13 @@ async function remove(): Promise<void> {
         v-if="cards.length === 0"
         type="button"
         class="icon-btn column-remove"
-        title="Delete column"
+        :title="t('Delete column')"
         @click="remove"
       >
         ✕
       </button>
     </header>
     <CardItem v-for="card in cards" :key="card.id" :card="card" />
-    <p v-if="cards.length === 0" class="empty">{{ filterActive && total > 0 ? 'no matches' : 'empty' }}</p>
+    <p v-if="cards.length === 0" class="empty">{{ filterActive && total > 0 ? t('no matches') : t('empty') }}</p>
   </section>
 </template>
