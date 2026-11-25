@@ -13,7 +13,7 @@ import { shellHelp } from '../core/shell.js';
 import { timeline } from '../core/timeline.js';
 import { VERSION } from '../core/version.js';
 import { flag, option, type Args } from './args.js';
-import { need, requireBoard } from './context.js';
+import { need, requireBoard, sessionOf } from './context.js';
 import { firstLine, localTime, say } from './io.js';
 
 /** Как агенту звать CLI: из node_modules (npx, локальная установка) — `npx viboard`, иначе — `viboard`. */
@@ -26,7 +26,7 @@ export function cmdMv(args: Args): number {
   const board = requireBoard(args);
   const ref = need(args.positional[1], 'card id');
   const to = need(args.positional[2], 'column');
-  const card = moveCard(board, ref, to, { force: flag(args, 'force'), session: option(args, 'session') });
+  const card = moveCard(board, ref, to, { force: flag(args, 'force'), session: sessionOf(args) });
   say(`${card.name} → ${card.column}/`);
   return 0;
 }
@@ -34,7 +34,7 @@ export function cmdMv(args: Args): number {
 export function cmdUnblock(args: Args): number {
   const board = requireBoard(args);
   const ref = need(args.positional[1], 'card id');
-  const card = unblock(board, ref, { session: option(args, 'session') });
+  const card = unblock(board, ref, { session: sessionOf(args) });
   say(`${card.name} → ${card.column}/`);
   return 0;
 }
@@ -78,7 +78,7 @@ export function cmdPrompt(args: Args): number {
   const board = requireBoard(args);
   const role = option(args, 'role') ?? 'executor';
   const ref = args.positional[1];
-  const tag = option(args, 'session') ?? newSessionTag();
+  const tag = sessionOf(args) ?? newSessionTag();
   const ctx: PromptContext = { board, cli: cliCommand(args) };
   if (role === 'manager') {
     say(prompts.manager(ctx, null, tag));
@@ -119,7 +119,7 @@ export function cmdStamp(args: Args): number {
   say(
     stamp({
       dir: resolve(option(args, 'dir') ?? process.cwd()),
-      session: need(option(args, 'session'), '--session <tag>'),
+      session: need(sessionOf(args), '--session <tag> or $VIBOARD_SESSION'),
       card: card === undefined || card === '-' ? '' : card,
       kind: need(option(args, 'kind'), '--kind <type>') as Kind,
     }),

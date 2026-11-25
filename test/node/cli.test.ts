@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ENV_BOARD } from '../../src/core/board.js';
+import { createCard, moveCard } from '../../src/core/ops.js';
+import { PROTOCOL_DIR } from '../../src/core/paths.js';
+import { initBoard } from '../../src/core/setup.js';
+import { cmdUnblock } from '../../src/cli/manage.js';
 import { parseArgs } from '../../src/cli/args.js';
 import { instant } from '../../src/cli/main.js';
 import { VERSION } from '../../src/core/version.js';
@@ -21,5 +29,46 @@ describe('version and help', () => {
     expect(instant(parseArgs([]))).toBeNull();
     expect(instant(parseArgs(['ui']))).toBeNull();
     expect(instant(parseArgs(['ls', '--log']))).toBeNull();
+  });
+});
+
+// Карточка 071: mv и unblock читали тег только из --session — с тегом в $VIBOARD_SESSION команда молча
+// записывала действие агента как действие владельца (session: owner в чужом логе).
+describe('тег сессии: --session, затем $VIBOARD_SESSION', () => {
+  const root = mkdtempSync(join(tmpdir(), 'viboard-session-'));
+  const hadBoard = process.env[ENV_BOARD];
+  const hadSession = process.env.VIBOARD_SESSION;
+  const board = join(root, 'board');
+
+  it('unblock с тегом только в переменной оставляет запись с этим тегом, а не владельца; mv разбирает тег так же', async () => {
+    await initBoard({
+      board,
+      project: { name: 'T', path: root },
+      protocolDir: PROTOCOL_DIR,
+      version: '0.1.0-test',
+      noGit: true,
+    });
+    const card = createCard(board, { project: 't', title: 'Session', body: 'text' });
+    moveCard(board, card.id, 'blocked', { session: 'aaaa1111' });
+    process.env[ENV_BOARD] = board;
+    process.env.VIBOARD_SESSION = 'bbbb2222';
+
+    cmdUnblock(parseArgs(['unblock', card.id])); // unblock пишет запись, mv — только двигает
+    const log = readdirSync(join(board, 'todo', card.name, 'log')); // замка нет — карточка вернулась в todo
+    expect(log.filter((f) => f.includes('-bbbb2222-') && f.endsWith('-note.md'))).toHaveLength(1);
+    expect(log.filter((f) => f.includes('-owner-'))).toHaveLength(0);
+
+    delete process.env.VIBOARD_SESSION; // без тега команда честно работает от имени владельца
+    moveCard(board, card.id, 'blocked', { session: 'aaaa1111' });
+    cmdUnblock(parseArgs(['unblock', card.id]));
+    expect(readdirSync(join(board, 'todo', card.name, 'log')).filter((f) => f.includes('-owner-'))).toHaveLength(1);
+  });
+
+  afterAll(() => {
+    if (hadBoard === undefined) delete process.env[ENV_BOARD];
+    else process.env[ENV_BOARD] = hadBoard;
+    if (hadSession === undefined) delete process.env.VIBOARD_SESSION;
+    else process.env.VIBOARD_SESSION = hadSession;
+    rmSync(root, { recursive: true, force: true });
   });
 });

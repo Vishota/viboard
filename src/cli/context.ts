@@ -26,6 +26,21 @@ export function need(value: string | undefined, what: string): string {
   return value;
 }
 
+/**
+ * Тег сессии там, где без него команда работает от имени владельца: --session <тег>, затем $VIBOARD_SESSION,
+ * без обоих — undefined (владелец). Один разбор для всех команд (карточка 071: mv и unblock читали только флаг
+ * и молча записывали действие агента как действие владельца).
+ */
+export function sessionOf(args: Args): string | undefined {
+  const raw = option(args, 'session') ?? process.env[ENV_SESSION];
+  if (raw === undefined || raw === '') return undefined;
+  try {
+    return sessionTag(raw);
+  } catch (e) {
+    throw new Fail(`${(e as Error).message}; new tag — viboard session`);
+  }
+}
+
 /** Тег сессии: --session <тег> или $VIBOARD_SESSION. */
 export function requireSession(args: Args): string {
   try {
