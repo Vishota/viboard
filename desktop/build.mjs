@@ -2,6 +2,8 @@
 // копия пакета viboard — package.json, dist, protocol) и запускает electron-builder. Результат — desktop/out/.
 
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -47,4 +49,16 @@ const result = spawnSync(
   ],
   { stdio: 'inherit', cwd: root },
 );
-process.exit(result.status ?? 1);
+if (result.status !== 0) process.exit(result.status ?? 1);
+
+// Контрольная сумма рядом с exe: публикация — на releases.vishota.com, файл и checksum владельцем (карточка 046).
+const out = join(root, 'desktop', 'out');
+// самый свежий: в папке может остаться exe прежней версии
+const exes = readdirSync(out).filter((name) => name.startsWith('viboard-desktop') && name.endsWith('.exe'));
+const exe = exes.sort((x, y) => statSync(join(out, y)).mtimeMs - statSync(join(out, x)).mtimeMs)[0];
+if (exe === undefined) process.exit(1);
+const sum = createHash('sha256')
+  .update(readFileSync(join(out, exe)))
+  .digest('hex');
+writeFileSync(join(out, `${exe}.sha256`), `${sum}  ${exe}\n`);
+process.stdout.write('sha256  ' + sum + '  ' + exe + String.fromCharCode(10));

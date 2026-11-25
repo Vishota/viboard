@@ -6,6 +6,10 @@
   "author": "Vishota",
   "homepage": "https://vishota.com/projects/viboard",
   "bugs": "https://vishota.com/projects/viboard/forum/viboard-issues",
+  "repository": {
+    "type": "git",
+    "url": "https://vishota.com/projects/viboard"
+  },
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
