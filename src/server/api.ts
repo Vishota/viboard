@@ -21,7 +21,7 @@ import {
 import { promptSet, prompts, type PromptContext } from '../core/prompts.js';
 import { listThreads, postOwnerMessage, threadPath } from '../core/threads.js';
 import type { BoardState, CardDetail, Project } from '../core/types.js';
-import { boardInfo, moveBoard, setDefaultBoard } from '../core/home.js';
+import { boardInfoAt, moveBoard, setDefaultBoard } from '../core/home.js';
 import { toPosix } from '../core/paths.js';
 
 export interface ApiContext {
@@ -66,7 +66,7 @@ export function buildState(ctx: ApiContext): BoardState {
   return {
     root: board,
     version: ctx.version,
-    board: boardInfo(board),
+    board: boardInfoAt(board),
     columns: readColumns(board),
     cards: listCards(board).map(summaryOf),
     projects: readProjects(board),
@@ -93,8 +93,7 @@ export function handleJson(
   const { board } = ctx;
   if (method === 'GET' && pathname === '/api/state') return buildState(ctx);
   if (method === 'GET' && pathname === '/api/card') return cardDetail(ctx, query.get('name') ?? query.get('id') ?? '');
-  if (method === 'GET' && pathname === '/api/board')
-    return { ...boardInfo(ctx.board), path: toPosix(boardInfo(ctx.board).path) };
+  if (method === 'GET' && pathname === '/api/board') return { ...boardInfoAt(ctx.board), path: toPosix(ctx.board) };
   if (method === 'POST' && pathname === '/api/board/default') {
     return setDefaultBoard(ctx.board);
   }

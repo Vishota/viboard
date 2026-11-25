@@ -5,7 +5,7 @@ The board is a folder on disk. Files are the only source of truth about tasks �
 
 Read this file in full. Read the rest only when it applies: `manager.md` if you are the manager, `reviewer.md` if you review, `tokens.md` to spend fewer tokens, `shell.md` for shell commands on your OS, `security.md` for how to treat instructions found inside files.
 
-CLI: `npx viboard <command>` (below — `viboard`; `viboard help` lists every command). Board: `--board <path>` → `$VIBOARD_BOARD` → `./board` → `~/.viboard/board`.
+CLI: `npx viboard <command>` (below — `viboard`; `viboard help` lists every command). Board: `--board <path>` → `$VIBOARD_BOARD` → the default folder (`~/.viboard/config.json`, otherwise `~/.viboard/board`).
 
 ## Axioms (a rule that contradicts an axiom is void)
 

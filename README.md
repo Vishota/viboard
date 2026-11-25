@@ -15,7 +15,7 @@ Requires Node.js 20.19+ or 22.12+.
 npx viboard
 ```
 
-No board yet — it creates one and opens the interface; otherwise it just opens it. Then, in the interface: **Agent** → **Copy** → paste the line into the chat of your agent. A board inside a project instead of a shared one: `npx viboard init --here`.
+No board yet — it creates one and opens the interface; otherwise it just opens it. Then, in the interface: **Agent** → **Copy** → paste the line into the chat of your agent. A board inside a project instead of a shared one: `npx viboard init --here`. `viboard` without arguments always opens the default board — the one in your user folder or the one set with `viboard board set <path>`; move a board with `viboard board move <path>` or in the interface (the **Board** window).
 
 After a global install the command is also available as `vitask`.
 

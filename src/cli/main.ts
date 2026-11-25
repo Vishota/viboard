@@ -38,7 +38,7 @@ Start
   viboard init [--here | --board <path>] [--project <name>] [--update-protocol] [--no-git]
   viboard ui [--port 8777] [--no-open] [--password <password> [--public]]
 
-Agent   (board: --board <path> → $VIBOARD_BOARD → ./board → ~/.viboard/board; tag: --session or $VIBOARD_SESSION)
+Agent   (board: --board <path> → $VIBOARD_BOARD → the default folder, see «Board folder»; tag: --session or $VIBOARD_SESSION)
   viboard session                          new session tag
   viboard ls [column]                      cards: P · id · project · lock · title
   viboard show <id> [--log]                card: path, README, log entries

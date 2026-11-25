@@ -53,6 +53,12 @@ export function boardInfo(explicit?: string): BoardInfo {
   };
 }
 
+/** Информация о конкретной доске; если это default — источник показывается как у запуска без аргументов. */
+export function boardInfoAt(path: string): BoardInfo {
+  const bare = boardInfo();
+  return same(resolve(path), bare.path) ? bare : boardInfo(path);
+}
+
 const same = (a: string, b: string): boolean =>
   process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 
