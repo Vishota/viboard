@@ -78,6 +78,8 @@ const ru: Record<string, string> = {
     'В старой папке осталось файлов: {count} — закройте программу, которая их держит, и удалите {path}',
   'The default board is unchanged: {path}': 'Доска по умолчанию не изменилась: {path}',
   'Guide, use cases and issues:': 'Гайд, юз кейсы и вопросы:',
+  'Card id — click to copy': 'Id карточки — клик копирует',
+  'Card id copied': 'Id карточки скопирован',
   Chat: 'Чат',
   'Clear filters': 'Сбросить фильтры',
   Close: 'Закрыть',

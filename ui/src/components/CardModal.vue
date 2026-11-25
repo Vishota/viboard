@@ -24,6 +24,15 @@ const signature = computed(() => {
   const c = summary.value;
   return c ? `${c.name}|${c.column}|${c.priority}|${c.project}|${c.lockedBy ?? ''}|${c.log}|${c.assets}` : '';
 });
+async function copyId(): Promise<void> {
+  try {
+    await copyText(detail.value?.card.id ?? '');
+    toast(t('Card id copied'), 'ok');
+  } catch (e) {
+    toast(e instanceof Error ? e.message : String(e));
+  }
+}
+
 const html = computed(() => renderMarkdown(detail.value?.card.body ?? ''));
 const entryLabel = (entry: LogEntry): string =>
   entry.verdict === null ? entry.type : `${entry.type}/${entry.verdict}`;
@@ -118,6 +127,10 @@ async function copyForAgent(): Promise<void> {
     <template v-else-if="detail">
       <h2>{{ detail.card.title || t('Untitled') }}</h2>
       <p class="meta">
+        <button type="button" class="card-id" :title="t('Card id — click to copy')" @click="copyId">
+          {{ detail.card.id }}
+        </button>
+        <br />
         {{ detail.card.name }} · {{ detail.card.column }}/ · {{ projectName(detail.card.project) }} · P{{
           detail.card.priority
         }}

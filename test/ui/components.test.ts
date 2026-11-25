@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import type { BoardState, CardSummary, Message, Thread } from '../../src/core/types.js';
 import App from '../../ui/src/App.vue';
 import BoardColumn from '../../ui/src/components/BoardColumn.vue';
+import CardModal from '../../ui/src/components/CardModal.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import SyncPanel from '../../ui/src/components/SyncPanel.vue';
@@ -568,6 +569,45 @@ describe('адрес страницы хранит открытое (карто�
     await flushPromises();
     expect(document.querySelectorAll('.modal')).toHaveLength(2);
     expect(window.location.search).toBe('?board=1&help=1');
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+});
+
+describe('id карточки в интерфейсе (карточка 138)', () => {
+  it('id виден на карточке в колонке и в открытой карточке', async () => {
+    const one = card({ id: '057-problema' });
+    state.value = board([one]);
+    const boardView = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
+    await flushPromises();
+    expect(boardView.find('.card-id').text()).toBe('057-problema');
+    boardView.unmount();
+
+    const detail = {
+      card: {
+        ...one,
+        board: 'C:/boards/demo',
+        dir: 'C:/boards/demo/todo/app-001-x',
+        meta: {},
+        body: '',
+        lockedAt: null,
+      },
+      entries: [],
+      assetSizes: {},
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string): Promise<object> =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(url.startsWith('/api/card') ? detail : state.value),
+        }),
+      ),
+    );
+    const wrapper = mount(CardModal, { props: { name: one.name }, attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.find('.card-id').text()).toBe('057-problema');
     wrapper.unmount();
     document.body.innerHTML = '';
   });
