@@ -79,6 +79,18 @@ A conflict (the same file changed on two devices) never blocks the board: the pu
 
 Sync is off when Git is not installed or the board lies inside another repository.
 
+## Desktop app (Windows)
+
+`viboard-desktop.exe` is the same board in its own window: no Node, no terminal. The board folder is the one `viboard` uses on this machine (`~/.viboard/board` unless another folder is set), so the CLI and the window show the same cards.
+
+```sh
+npm run desktop:build        # → desktop/out/viboard-desktop <version>.exe (portable, one file)
+```
+
+The build needs the Electron runtime unpacked in `desktop/cache/electron/`: download `electron-v<version>-win32-x64.zip` from the [Electron releases](https://github.com/electron/electron/releases) (the version is the `electron` devDependency) and unpack it there once. The builder does not download it by itself.
+
+The exe is not signed: Windows shows a SmartScreen warning on first start. Release builds are signed separately.
+
 ## Development
 
 ```sh

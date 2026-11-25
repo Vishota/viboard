@@ -6,7 +6,16 @@ import pluginVue from 'eslint-plugin-vue';
 // Стиль отдан Prettier; здесь — ошибки и семантика (типизированные правила typescript-eslint включены).
 export default withVueTs(
   {
-    ignores: ['dist/**', 'node_modules/**', 'board/**', 'archive/**', 'current/**', 'tmp/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'board/**',
+      'archive/**',
+      'current/**',
+      'tmp/**',
+      'desktop/out/**',
+      'desktop/stage/**',
+    ],
   },
   js.configs.recommended,
   pluginVue.configs['flat/essential'],

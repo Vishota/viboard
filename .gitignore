@@ -9,3 +9,8 @@ tmp/
 
 # Доска владельца живёт вне репозитория — ~/.viboard/board (UD-29)
 /board/
+
+# Сборка exe (карточка 046)
+desktop/out/
+desktop/stage/
+desktop/cache/

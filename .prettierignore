@@ -6,3 +6,6 @@ current/
 tmp/
 dist/
 package-lock.json
+desktop/out/
+desktop/stage/
+desktop/cache/
