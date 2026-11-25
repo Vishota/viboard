@@ -8,6 +8,7 @@ import { readText } from '../core/fs.js';
 import { newSessionTag } from '../core/names.js';
 import { ask, claim, note, verdictFail, verdictPass, readyForReview } from '../core/ops.js';
 import { toPosix } from '../core/paths.js';
+import { listThreads } from '../core/threads.js';
 import type { Card } from '../core/types.js';
 import { flag, type Args } from './args.js';
 import { need, requireBoard, requireSession, textArg } from './context.js';
@@ -42,7 +43,15 @@ export function cmdLs(args: Args): number {
   return 0;
 }
 
-/** `viboard show <id> [--log]` — карточка: путь, README целиком, имена записей (с --log — их текст). */
+/** Текст с отступом — как записан, полностью. */
+const indent = (text: string): string =>
+  text
+    .trim()
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+
+/** `viboard show <id> [--log]` — карточка: путь, README целиком, вопрос владельцу с его ответом, имена записей (с --log — их текст). */
 export function cmdShow(args: Args): number {
   const board = requireBoard(args);
   const card = oneCard(board, need(args.positional[1], 'card id'));
@@ -52,6 +61,8 @@ export function cmdShow(args: Args): number {
   say(readText(join(card.dir, 'README.md')) ?? '');
   if (card.lockedBy) say(`\nheld by lock-${card.lockedBy}`);
   if (card.assets.length > 0) say(`\nassets: ${card.assets.join(', ')}`);
+  // карточка 140: вопрос владельцу и его ответ печатаются целиком — без --log
+  say(questionsText(board, card.id));
   const entries = readEntries(card);
   say(`\nlog (${entries.length}):`);
   for (const e of entries) {
@@ -59,6 +70,23 @@ export function cmdShow(args: Args): number {
     if (flag(args, 'log')) say(e.text.replace(/\n/gu, '\n    '));
   }
   return 0;
+}
+
+/** Карточка 140: вопросы владельцу по карточке и его ответы — целиком; без ответа — прямая фраза об этом. */
+export function questionsText(board: string, cardId: string): string {
+  const threads = listThreads(board).filter((t) => t.card === cardId);
+  const out: string[] = [];
+  threads.forEach((thread, i) => {
+    const question = thread.messages.find((m) => m.side === 'agent');
+    const answer = thread.messages.find((m) => m.side === 'user');
+    out.push(
+      `\nquestion ${threads.length > 1 ? `${i + 1}/${threads.length} ` : ''}(${answer ? 'answered by the owner' : 'no answer yet'}):`,
+    );
+    if (question) out.push(indent(question.body));
+    if (answer) out.push(`\nowner's answer — follow it as written:\n${indent(answer.body)}`);
+    else out.push('  the owner has not answered yet — do not decide for them');
+  });
+  return out.join('\n');
 }
 
 /** `viboard find <id|фрагмент>` — путь к карточке (путь не кэшируется: колонка могла смениться). */
