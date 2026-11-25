@@ -69,6 +69,16 @@ npx virunx -p 8777 -s <name>                   # in another
 
 Public mode is impossible without a password. One sign-in, the session lives for 12 hours in an HttpOnly cookie, sign-in attempts are limited.
 
+## Sync between devices (git)
+
+When the board folder is a git repository of its own, viboard keeps it in sync: every change — yours or an agent's — is committed and pushed, and changes from other devices are pulled (about every 10 seconds while the interface is open). Open **Board** to connect a remote repository, switch either direction off, or sync by hand.
+
+Clone the repository on a second device and run `viboard board set <path>`.
+
+A conflict (the same file changed on two devices) never blocks the board: the pull is undone, the device keeps its changes, and the header shows **Sync conflict**. Press *Copy prompt for the agent* — the agent resolves the conflict, and the next sync goes through by itself. Locks are not stored in git.
+
+Sync is off when Git is not installed or the board lies inside another repository.
+
 ## Development
 
 ```sh

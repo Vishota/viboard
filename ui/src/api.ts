@@ -1,4 +1,13 @@
-import type { BoardState, CardDetail, CardPatch, CardSummary, MoveResult, Project, PromptName } from '@core/types';
+import type {
+  BoardState,
+  CardDetail,
+  CardPatch,
+  CardSummary,
+  MoveResult,
+  Project,
+  PromptName,
+  SyncInfo,
+} from '@core/types';
 
 /** Ошибка API с готовым текстом для владельца (сервер присылает { error }). */
 export class ApiError extends Error {
@@ -66,5 +75,8 @@ export const api = {
     upload(`/api/chat-attach?${query({ q: thread, name })}`, file),
   login: (password: string): Promise<{ ok: true }> => post('/api/login', { password }),
   boardDefault: (): Promise<unknown> => post('/api/board/default'),
+  /** Карточка 049: подключить remote, переключить автосинхронизацию или синхронизировать сейчас. */
+  sync: (body: { remote?: string; autoPull?: boolean; autoPush?: boolean; action?: 'now' } = {}): Promise<SyncInfo> =>
+    post('/api/sync', body),
   boardMigrate: (path: string, force = false): Promise<MoveResult> => post('/api/board/migrate', { path, force }),
 };

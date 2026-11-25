@@ -115,6 +115,31 @@ export interface Finding {
   text: string;
 }
 
+/** Синхронизация доски через git (карточка 049); логика — в sync.ts. */
+export interface SyncSettings {
+  autoPull: boolean;
+  autoPush: boolean;
+}
+
+export type SyncState = 'off' | 'clean' | 'dirty' | 'conflict' | 'error';
+
+export interface SyncInfo {
+  /** git есть и доска — корень своего репозитория; иначе синхронизация невозможна. */
+  available: boolean;
+  /** Почему недоступно — показать владельцу. */
+  reason: 'no-git' | 'inside-repo' | null;
+  /** Адрес origin; пусто — доска ещё не подключена к удалённому репозиторию. */
+  remote: string;
+  branch: string;
+  autoPull: boolean;
+  autoPush: boolean;
+  state: SyncState;
+  /** Незакоммиченные изменения и неотправленные коммиты. */
+  pending: number;
+  /** Последняя ошибка или пояснение конфликта — показать владельцу. */
+  message: string;
+}
+
 /** Всё, что UI нужно для отрисовки: проекция файловой системы, без собственного состояния. */
 export interface BoardState {
   root: string;
@@ -124,6 +149,8 @@ export interface BoardState {
   cards: CardSummary[];
   projects: Project[];
   questions: Thread[];
+  /** Синхронизация доски через git (карточка 049). */
+  sync: SyncInfo;
   /** Тексты заданий для новых сессий (тот же источник, что `viboard prompt`). */
   prompts: Record<'executor' | 'reviewer' | 'manager' | 'board', string>;
   protocol: { installed: string | null; current: string };

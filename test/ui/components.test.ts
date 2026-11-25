@@ -4,7 +4,9 @@ import type { BoardState, CardSummary, Message, Thread } from '../../src/core/ty
 import App from '../../ui/src/App.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
+import SyncPanel from '../../ui/src/components/SyncPanel.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
+import { toasts } from '../../ui/src/modal';
 import { cardMatches, filterActive, filters, resetFilters, chatOpen, state, stopPolling } from '../../ui/src/store';
 import { setLocale, t } from '../../ui/src/i18n';
 
@@ -60,6 +62,17 @@ const board = (cards: CardSummary[] = []): BoardState => ({
   questions: [],
   prompts: { board: 'b', executor: 'e', reviewer: 'r', manager: 'm' },
   protocol: { installed: '0.1.0', current: '0.1.0' },
+  sync: {
+    available: false,
+    reason: 'no-git',
+    remote: '',
+    branch: '',
+    autoPull: true,
+    autoPush: true,
+    state: 'off',
+    pending: 0,
+    message: '',
+  },
 });
 
 /** Сервер на заглушке: состояние доски и «успех» на любую запись. */
@@ -338,5 +351,55 @@ describe('локализация интерфейса (карточка 048)', (
     await flushPromises();
     expect(second.find('[role="dialog"]').exists()).toBe(false);
     second.unmount();
+  });
+});
+
+describe('синхронизация с git (карточка 049)', () => {
+  const conflicted = (): BoardState => ({
+    ...board(),
+    sync: {
+      available: true,
+      reason: null,
+      remote: 'https://github.com/you/board.git',
+      branch: 'main',
+      autoPull: true,
+      autoPush: true,
+      state: 'conflict',
+      pending: 1,
+      message: 'same files changed on two devices',
+    },
+  });
+
+  it('конфликт виден в шапке без открытия окна Board; окно предлагает промпт для агента — на языке интерфейса', async () => {
+    stubServer(conflicted);
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    expect(wrapper.text()).toContain('Sync conflict');
+    const headerButton = wrapper.findAll('button').find((b) => b.text() === 'Sync conflict');
+    void headerButton?.trigger('click');
+    await flushPromises();
+    const panel = document.body.querySelector('.sync-conflict');
+    expect(panel?.textContent).toContain('same files changed on two devices');
+    expect(panel?.textContent).toContain('Copy prompt for the agent');
+    expect(document.body.textContent).toContain('Conflict · 1');
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('тост говорит правду: конфликт остался — не «синхронизировано» (найдено вживую)', async () => {
+    state.value = conflicted();
+    const syncMock = vi.fn((_url: string, _init?: RequestInit): Promise<object> =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(conflicted().sync) }),
+    );
+    vi.stubGlobal('fetch', syncMock);
+    const wrapper = mount(SyncPanel, { attachTo: document.body });
+    await flushPromises();
+    const now = wrapper.findAll('button').find((b) => b.text() === 'Sync now');
+    void now?.trigger('click');
+    await flushPromises();
+    expect(toasts.value.map((item) => [item.text, item.kind])).toContainEqual(['The conflict is still there', 'error']);
+    expect(toasts.value.some((item) => item.text === 'Synced')).toBe(false);
+    wrapper.unmount();
   });
 });

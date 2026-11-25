@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { DEFAULT_COLUMNS, isBoard, readProjects, writeColumns } from './board.js';
 import { Fail } from './errors.js';
 import { ensureDir, readText, writeAtomic } from './fs.js';
-import { projectId } from './names.js';
+import { projectId, SYNC_SETTINGS } from './names.js';
 import { addProject } from './ops.js';
 import { PROTOCOL_FILES, SHELL_DOC, toPosix } from './paths.js';
 import { shellDoc } from './shell.js';
@@ -56,7 +56,7 @@ export async function initBoard(options: InitOptions): Promise<InitResult> {
   for (const service of ['questions', 'log']) touch(join(board, service, '.gitkeep'));
   if (!existsSync(join(board, 'columns.yml'))) writeColumns(board, [...DEFAULT_COLUMNS]);
   if (readProjects(board).length === 0) addProject(board, options.project);
-  touch(join(board, '.gitignore'), 'lock-*/\n.lock-*/\n');
+  touch(join(board, '.gitignore'), `lock-*/\n.lock-*/\n${SYNC_SETTINGS}\n`);
 
   const protocol: string[] = [];
   for (const file of PROTOCOL_FILES) {

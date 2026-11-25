@@ -5,6 +5,7 @@ import { api } from '../api';
 import { MODAL_ID, closeModal, confirmDialog, toast } from '../modal';
 import { state, sync } from '../store';
 import ModalShell from './ModalShell.vue';
+import SyncPanel from './SyncPanel.vue';
 import { t } from '../i18n';
 
 const modalId = inject(MODAL_ID);
@@ -72,17 +73,18 @@ async function move(force: boolean): Promise<void> {
       {{ t('«viboard» without arguments opens the default folder, not this one.') }}
     </p>
     <button v-if="info && !info.isDefault" type="button" class="btn-sec" :disabled="busy" @click="makeDefault">
-      Use this board as the default
+      {{ t('Use this board as the default') }}
     </button>
 
     <h4 class="agent-heading">{{ t('Move to another folder') }}</h4>
     <div class="row">
-      <input v-model="target" name="board-path" :placeholder="t('C:\boards\my-board')" :disabled="busy" />
+      <input v-model="target" name="board-path" :placeholder="t('C:\\boards\\my-board')" :disabled="busy" />
       <button type="button" class="btn-sec" :disabled="busy" @click="move(false)">{{ t('Move') }}</button>
     </div>
     <button v-if="lockRefused" type="button" class="btn-danger" :disabled="busy" @click="move(true)">
-      Move anyway — working agents keep reading the old folder
+      {{ t('Move anyway — working agents keep reading the old folder') }}
     </button>
     <p v-if="error !== ''" class="form-error">{{ error }}</p>
+    <SyncPanel />
   </ModalShell>
 </template>

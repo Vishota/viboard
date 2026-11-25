@@ -15,6 +15,9 @@ export type Kind = LogKind | ThreadKind;
 export const KINDS: readonly Kind[] = [...LOG_KINDS, ...THREAD_KINDS];
 
 /** Тег владельца: всё, что написано через UI. Агентам недоступен. */
+/** Настройки синхронизации с git (карточка 049): на устройстве, в gitignore доски. */
+export const SYNC_SETTINGS = 'sync.json';
+
 export const OWNER = 'owner';
 /** Так подписывался UI до переименования (старые сообщения и вложения в тредах). */
 export const LEGACY_OWNER = 'ui-owner';

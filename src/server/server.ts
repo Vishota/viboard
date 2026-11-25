@@ -10,6 +10,7 @@ import { APP } from '../core/names.js';
 import { UI_DIR } from '../core/paths.js';
 import { ATTACH_LIMIT } from '../core/ops.js';
 import { postOwnerAttachment } from '../core/threads.js';
+import { syncAuto } from '../core/sync.js';
 import { VERSION } from '../core/version.js';
 import { attachToCard, cardAssetPath, handleJson, threadAssetPath, type ApiContext } from './api.js';
 import { Auth } from './auth.js';
@@ -93,6 +94,12 @@ export function createBoardServer(options: ServerOptions): http.Server {
     void handle(req, res);
   });
 
+  // карточка 049: авто-синхронизация с git — коммит и push изменений (в том числе сделанных агентами через CLI),
+  // pull с другого устройства. Пока интерфейс опрашивает доску (2,5 с), задержка сравнима с опросом.
+  const SYNC_MS = 10_000;
+  const syncTimer = setInterval(() => void syncAuto(ctx.board).catch(() => undefined), SYNC_MS);
+  syncTimer.unref();
+
   const port = (): number => {
     const address = server.address();
     return address !== null && typeof address === 'object' ? address.port : (options.port ?? 0);
@@ -136,7 +143,7 @@ export function createBoardServer(options: ServerOptions): http.Server {
           return sendAttachment(res, threadAssetPath(ctx, query.get('q') ?? '', query.get('f')));
         }
         if (auth && !auth.valid(req)) throwUnauthorized();
-        const hit = handleJson(ctx, 'GET', path, query, {});
+        const hit = await handleJson(ctx, 'GET', path, query, {});
         if (hit === null) throw new HttpError(404, 'not found');
         return sendJson(res, 200, hit);
       }
@@ -170,7 +177,7 @@ export function createBoardServer(options: ServerOptions): http.Server {
             : postOwnerAttachment(ctx.board, query.get('q') ?? '', name, data);
         return sendJson(res, 200, { file });
       }
-      const hit = handleJson(ctx, 'POST', path, query, await readJson(req));
+      const hit = await handleJson(ctx, 'POST', path, query, await readJson(req));
       if (hit === null) throw new HttpError(404, 'not found');
       return sendJson(res, 200, hit);
     } catch (e) {

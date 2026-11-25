@@ -1,5 +1,13 @@
+<script lang="ts">
+// Какое состояние синхронизации должно само привлечь внимание владельца.
+const syncAlert = computed<'conflict' | 'error' | null>(() => {
+  const sync = state.value?.sync;
+  return sync?.state === 'conflict' || sync?.state === 'error' ? sync.state : null;
+});
+</script>
 <script setup lang="ts">
 import AgentModal from './AgentModal.vue';
+import { computed } from 'vue';
 import BoardModal from './BoardModal.vue';
 import HelpModal from './HelpModal.vue';
 import { locale, setLocale, locales } from '../i18n';
@@ -33,6 +41,16 @@ import { t } from '../i18n';
     <template v-if="state">
       <button type="button" class="btn" @click="openModal(TaskModal)">{{ t('+ Task') }}</button>
       <button type="button" class="btn-sec" @click="openModal(AgentModal)">{{ t('Agent') }}</button>
+      <!-- Карточка 049: конфликт или ошибка синхронизации видны без открытия окна Board -->
+      <button
+        v-if="syncAlert"
+        type="button"
+        class="btn-sec sync-alert"
+        :title="t('Git sync needs your attention')"
+        @click="openModal(BoardModal)"
+      >
+        {{ syncAlert === 'conflict' ? t('Sync conflict') : t('Sync failed') }}
+      </button>
       <button type="button" class="btn-sec" @click="openModal(BoardModal)">{{ t('Board') }}</button>
       <button type="button" class="btn-sec" @click="chatOpen = !chatOpen">
         <span>{{ t('Chat') }}</span>

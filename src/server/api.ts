@@ -23,6 +23,7 @@ import { listThreads, postOwnerMessage, threadPath } from '../core/threads.js';
 import type { BoardState, Card, CardDetail, Project } from '../core/types.js';
 import { boardInfoAt, moveBoard, setDefaultBoard } from '../core/home.js';
 import { toPosix } from '../core/paths.js';
+import { setRemote, syncInfo, syncInfoCached, syncNow, writeSyncSettings } from '../core/sync.js';
 
 export interface ApiContext {
   /** Папка доски; меняется после переноса через интерфейс. */
@@ -67,7 +68,7 @@ function knownProject(ctx: ApiContext, id: string): string {
   return id;
 }
 
-export function buildState(ctx: ApiContext): BoardState {
+export async function buildState(ctx: ApiContext): Promise<BoardState> {
   const { board } = ctx;
   return {
     root: board,
@@ -79,6 +80,7 @@ export function buildState(ctx: ApiContext): BoardState {
     questions: listThreads(board),
     prompts: promptSet(ctx.promptContext),
     protocol: { installed: installedProtocolVersion(board), current: ctx.version },
+    sync: await syncInfoCached(board),
   };
 }
 
@@ -89,13 +91,13 @@ export function cardDetail(ctx: ApiContext, ref: string): CardDetail {
 }
 
 /** Обрабатывает JSON-маршрут; null — маршрут не найден. */
-export function handleJson(
+export async function handleJson(
   ctx: ApiContext,
   method: string,
   pathname: string,
   query: URLSearchParams,
   body: Body,
-): object | null {
+): Promise<object | null> {
   const { board } = ctx;
   if (method === 'GET' && pathname === '/api/state') return buildState(ctx);
   if (method === 'GET' && pathname === '/api/card') return cardDetail(ctx, query.get('name') ?? query.get('id') ?? '');
@@ -109,6 +111,16 @@ export function handleJson(
             .filter((c) => matchCard(c, q))
             .map((c) => c.name);
     return { names };
+  }
+  if (method === 'GET' && pathname === '/api/sync') return syncInfo(board);
+  if (method === 'POST' && pathname === '/api/sync') {
+    // карточка 049: подключение удалённого репозитория, настройки устройства, синхронизация руками
+    const settings = writeSyncSettings(board, {
+      ...(typeof body.autoPull === 'boolean' ? { autoPull: body.autoPull } : {}),
+      ...(typeof body.autoPush === 'boolean' ? { autoPush: body.autoPush } : {}),
+    });
+    if (typeof body.remote === 'string') return setRemote(board, body.remote.trim());
+    return body.action === 'settings' ? syncInfo(board) : syncNow(board, { pull: settings.autoPull });
   }
   if (method === 'GET' && pathname === '/api/board') return { ...boardInfoAt(ctx.board), path: toPosix(ctx.board) };
   if (method === 'POST' && pathname === '/api/board/default') {

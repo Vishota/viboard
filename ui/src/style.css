@@ -1006,6 +1006,43 @@ a {
   user-select: text;
 }
 
+.sync-alert {
+  border-color: var(--danger, #e0a0a0);
+  color: var(--danger, #e0a0a0);
+}
+
+.sync-toggles {
+  margin: 10px 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sync-toggles label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sync-bad {
+  color: var(--danger, #e0a0a0);
+}
+
+.sync-conflict {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger, #e0a0a0);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.sync-conflict p {
+  margin: 0 0 8px;
+}
+
 .board-hint {
   color: var(--dim);
   font-size: 13px;
