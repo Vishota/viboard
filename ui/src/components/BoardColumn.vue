@@ -47,9 +47,11 @@ async function remove(): Promise<void> {
   >
     <header class="column-head">
       <h2>{{ column }}</h2>
-      <span class="column-count">{{ cards.length }}</span>
+      <span class="column-count"
+        >{{ cards.length }}<template v-if="cards.length !== total">/{{ total }}</template></span
+      >
       <button
-        v-if="cards.length === 0"
+        v-if="total === 0"
         type="button"
         class="icon-btn column-remove"
         :title="t('Delete column')"

@@ -330,6 +330,10 @@ describe('поиск по тексту (карточка 044)', () => {
     expect(await names('TYPOGRAPHY')).toEqual(['test-001-title-only']);
     expect(await names('claim')).toEqual(['test-002-other']);
     expect(await names('absent')).toEqual([]);
+    // служебные поля frontmatter не ищутся: иначе находятся все карточки доски (карточка 044)
+    expect(await names('priority')).toEqual([]);
+    expect(await names('depends_on')).toEqual([]);
+    expect(await names('created')).toEqual([]);
     expect((await call(app.port, { path: '/api/search' })).status).toBe(200);
     await app.close();
   });

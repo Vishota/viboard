@@ -99,22 +99,24 @@ export const visibleCount = computed(() => state.value?.cards.filter(cardMatches
 
 // текст постановки ищет сервер: запрос → карточки, у которых он есть в README (с задержкой на набор)
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+// номер текущего запроса: ответ на прежний запрос не должен затирать новый (большая доска, туннель)
+let searchSeq = 0;
 watch(
   () => filters.query,
   (query) => {
     if (searchTimer !== undefined) clearTimeout(searchTimer);
+    const seq = ++searchSeq;
+    bodyHits.value = new Set(); // под новым запросом не висят совпадения прежнего
     const q = query.trim();
-    if (q.length < 2) {
-      bodyHits.value = new Set();
-      return;
-    }
+    if (q.length < 2) return;
     searchTimer = setTimeout(async () => {
       try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
           headers: { Accept: 'application/json' },
         });
         if (!response.ok) return;
-        bodyHits.value = new Set(((await response.json()) as { names: string[] }).names);
+        const names = ((await response.json()) as { names: string[] }).names;
+        if (seq === searchSeq) bodyHits.value = new Set(names);
       } catch {
         /* поиск по тексту недоступен — остаётся поиск по названию */
       }

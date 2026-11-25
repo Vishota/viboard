@@ -36,7 +36,7 @@ onMounted(() => {
 <template>
   <div class="app">
     <AppHeader />
-    <FilterBar />
+    <FilterBar v-if="state" />
     <main class="app-main">
       <BoardView v-if="state" />
       <AuthGate v-else-if="locked" />

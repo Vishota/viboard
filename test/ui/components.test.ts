@@ -2,12 +2,22 @@ import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import type { BoardState, CardSummary, Message, Thread } from '../../src/core/types.js';
 import App from '../../ui/src/App.vue';
+import BoardColumn from '../../ui/src/components/BoardColumn.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import SyncPanel from '../../ui/src/components/SyncPanel.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
 import { toasts } from '../../ui/src/modal';
-import { cardMatches, filterActive, filters, resetFilters, chatOpen, state, stopPolling } from '../../ui/src/store';
+import {
+  bodyHits,
+  cardMatches,
+  filterActive,
+  filters,
+  resetFilters,
+  chatOpen,
+  state,
+  stopPolling,
+} from '../../ui/src/store';
 import { locale, setLocale, t } from '../../ui/src/i18n';
 
 const T = Date.parse('2026-11-23T10:00:00Z');
@@ -306,6 +316,69 @@ describe('поиск и фильтры (карточка 044)', () => {
     expect(filters.query).toBe('');
     expect(wrapper.find('.filter-count').exists()).toBe(false);
     wrapper.unmount();
+  });
+
+  it('кнопка удаления — только у пустой колонки, а не у отфильтрованной до нуля (найдено проверяющим)', async () => {
+    state.value = board([card()]);
+    const wrapper = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.find('.column-count').text()).toBe('1');
+    expect(wrapper.find('.column-remove').exists()).toBe(false);
+
+    filters.project = 'other'; // карточка спрятана фильтром, в колонке она остаётся
+    await flushPromises();
+    expect(wrapper.find('.column-count').text()).toBe('0/1');
+    expect(wrapper.find('.column-remove').exists()).toBe(false);
+    expect(wrapper.find('.empty').text()).toBe('no matches');
+
+    resetFilters();
+    filters.project = 'app';
+    await flushPromises();
+    expect(wrapper.find('.column-count').text()).toBe('1');
+    wrapper.unmount();
+
+    const empty = mount(BoardColumn, { props: { column: 'done' }, attachTo: document.body });
+    await flushPromises();
+    expect(empty.find('.column-remove').exists()).toBe(true);
+    empty.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('без доски (пароль, нет соединения) полосы фильтров нет', async () => {
+    stubServer(() => board(), 401);
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    expect(document.querySelectorAll('input[name="search"]')).toHaveLength(0);
+    expect(wrapper.text()).not.toContain('All projects');
+    wrapper.unmount();
+  });
+
+  it('поздний ответ поиска не затирает актуальный; при смене запроса прежние совпадения сбрасываются (найдено проверяющим)', async () => {
+    state.value = board([card({ id: '001-the' }), card({ id: '002-zz', name: 'app-002-zz' })]);
+    let finishFirst: (value: object) => void = () => undefined;
+    const answers: Record<string, string[]> = { the: ['app-001-the'], zz: ['app-002-zz'] };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string): Promise<object> => {
+        if (url === '/api/state')
+          return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(state.value)) });
+        const q = decodeURIComponent(url.split('q=')[1] ?? '');
+        if (q === 'the') return new Promise<object>((resolve) => (finishFirst = resolve));
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ names: answers[q] ?? [] }) });
+      }),
+    );
+
+    filters.query = 'the';
+    await new Promise((r) => setTimeout(r, 260));
+    expect(bodyHits.value.size).toBe(0); // ответ ещё не пришёл — совпадений нет
+    filters.query = 'zz';
+    expect(bodyHits.value.size).toBe(0); // под новым запросом не висят прежние совпадения
+    await new Promise((r) => setTimeout(r, 260));
+    expect([...bodyHits.value]).toEqual(['app-002-zz']);
+    finishFirst({ ok: true, status: 200, json: () => Promise.resolve({ names: ['app-001-the'] }) });
+    await new Promise((r) => setTimeout(r, 20));
+    expect([...bodyHits.value]).toEqual(['app-002-zz']);
   });
 });
 

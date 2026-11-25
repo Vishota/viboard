@@ -4,6 +4,7 @@
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
 import { listCards, oneCard, readColumns, readEntries, readProjects, summaryOf } from '../core/board.js';
+import { parseDoc } from '../core/frontmatter.js';
 import { installedProtocolVersion } from '../core/check.js';
 import { Fail } from '../core/errors.js';
 import { isRealFile, listFiles, readText } from '../core/fs.js';
@@ -56,10 +57,12 @@ const sizeOf = (file: string): number => {
   }
 };
 
+/** Только текст — без frontmatter: иначе «priority» или «created» находят все карточки доски (карточка 044). */
 function matchCard(card: Card, q: string): boolean {
   if (card.title.toLowerCase().includes(q)) return true;
-  if ((readText(join(card.dir, 'README.md')) ?? '').toLowerCase().includes(q)) return true;
-  return card.log.some((file) => (readText(join(card.dir, 'log', file)) ?? '').toLowerCase().includes(q));
+  const readme = readText(join(card.dir, 'README.md'));
+  if (readme !== null && parseDoc(readme).body.toLowerCase().includes(q)) return true;
+  return readEntries(card).some((entry) => entry.text.toLowerCase().includes(q));
 }
 
 function knownProject(ctx: ApiContext, id: string): string {
