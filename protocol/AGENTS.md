@@ -25,14 +25,14 @@ CLI: `npx viboard <command>` (below — `viboard`; `viboard help` lists every co
   backlog/ todo/ doing/ blocked/ review/ done/    columns = statuses
   questions/                   chat threads with the owner
   log/                         entries about closed cards
-  <project>-P<1-5>-<NNN>-<slug>/
+  <project>-<NNN>-<slug>/                 the priority lives in the card, not in the name
     README.md                  frontmatter + task text
     log/<time>-<tag>-<type>.md
     assets/
     lock-<tag>/                taken — by you or another session
 ```
 
-A card's name is meant to be read in `ls`: `vishota.com-P1-003-tipografika` — project, priority (1 is the highest), id, a short title. Cards are referenced by id: `003-tipografika`. Never cache a card's path — its column can change: `viboard find 003`. The folder is also renamed when the owner changes the priority or the project: right before writing into a card by hand, run `viboard find <id>` again. A write to a path you read earlier brings the old folder back and splits the card in two.
+A card's name is meant to be read in `ls`: `vishota.com-003-tipografika` — project, id with a short title. The priority lives in the card only (`viboard ls` sorts by it): a folder is never renamed because of a priority. Cards are referenced by id: `003-tipografika`. Never cache a card's path — its column can change, and the folder is renamed when the owner changes the project: right before writing into a card by hand, run `viboard find <id>` again. A write to a path you read earlier brings the old folder back and splits the card in two. Older boards keep folders named `<project>-P<1-5>-<NNN>-<slug>`: `viboard check` points at them, `viboard fix` renames them.
 
 Status: `backlog` — the task is not ready · `todo` — ready to take · `doing` — in progress · `blocked` — waiting for the owner or a dependency · `review` — waiting for verification · `done` — closed.
 
