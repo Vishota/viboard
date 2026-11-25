@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { listCards, oneCard, readColumns, readEntries, readProjects, summaryOf } from '../core/board.js';
 import { installedProtocolVersion } from '../core/check.js';
 import { Fail } from '../core/errors.js';
-import { isRealFile, listFiles } from '../core/fs.js';
+import { isRealFile, listFiles, readText } from '../core/fs.js';
 import { ATT_RE } from '../core/names.js';
 import {
   addColumn,
@@ -20,7 +20,7 @@ import {
 } from '../core/ops.js';
 import { promptSet, prompts, type PromptContext } from '../core/prompts.js';
 import { listThreads, postOwnerMessage, threadPath } from '../core/threads.js';
-import type { BoardState, CardDetail, Project } from '../core/types.js';
+import type { BoardState, Card, CardDetail, Project } from '../core/types.js';
 import { boardInfoAt, moveBoard, setDefaultBoard } from '../core/home.js';
 import { toPosix } from '../core/paths.js';
 
@@ -54,6 +54,12 @@ const sizeOf = (file: string): number => {
     return 0;
   }
 };
+
+function matchCard(card: Card, q: string): boolean {
+  if (card.title.toLowerCase().includes(q)) return true;
+  if ((readText(join(card.dir, 'README.md')) ?? '').toLowerCase().includes(q)) return true;
+  return card.log.some((file) => (readText(join(card.dir, 'log', file)) ?? '').toLowerCase().includes(q));
+}
 
 function knownProject(ctx: ApiContext, id: string): string {
   const project: Project | undefined = readProjects(ctx.board).find((p) => p.id === id);
@@ -93,6 +99,17 @@ export function handleJson(
   const { board } = ctx;
   if (method === 'GET' && pathname === '/api/state') return buildState(ctx);
   if (method === 'GET' && pathname === '/api/card') return cardDetail(ctx, query.get('name') ?? query.get('id') ?? '');
+  if (method === 'GET' && pathname === '/api/search') {
+    // поиск по тексту постановки и названиям записей лога (карточка 044)
+    const q = (query.get('q') ?? '').trim().toLowerCase();
+    const names =
+      q === ''
+        ? []
+        : listCards(board)
+            .filter((c) => matchCard(c, q))
+            .map((c) => c.name);
+    return { names };
+  }
   if (method === 'GET' && pathname === '/api/board') return { ...boardInfoAt(ctx.board), path: toPosix(ctx.board) };
   if (method === 'POST' && pathname === '/api/board/default') {
     return setDefaultBoard(ctx.board);

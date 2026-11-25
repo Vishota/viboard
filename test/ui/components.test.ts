@@ -3,8 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils';
 import type { BoardState, CardSummary, Message, Thread } from '../../src/core/types.js';
 import App from '../../ui/src/App.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
+import FilterBar from '../../ui/src/components/FilterBar.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
-import { chatOpen, state, stopPolling } from '../../ui/src/store';
+import { cardMatches, filterActive, filters, resetFilters, chatOpen, state, stopPolling } from '../../ui/src/store';
 
 const T = Date.parse('2026-11-23T10:00:00Z');
 
@@ -235,6 +236,61 @@ describe('приложение', () => {
     expect(wrapper.find('.chat').classes()).toContain('open');
     expect(wrapper.findAll('.thread-row')).toHaveLength(2);
     expect(wrapper.findAll('.thread-row .unread')).toHaveLength(1);
+    wrapper.unmount();
+  });
+});
+
+describe('поиск и фильтры (карточка 044)', () => {
+  afterEach(() => resetFilters());
+
+  it('текст, проект, приоритет и состояние сужают список; сброс возвращает всё', () => {
+    state.value = board([
+      card(),
+      card({
+        id: '002-y',
+        name: 'app-P1-002-y',
+        title: 'Urgent fix',
+        priority: 1,
+        column: 'doing',
+        lockedBy: 'aaaa1111',
+      }),
+      card({ id: '003-z', name: 'other-P5-003-z', project: 'other', title: 'Elsewhere', priority: 5 }),
+    ]);
+    expect(state.value.cards.filter(cardMatches)).toHaveLength(3);
+
+    filters.query = 'urgent';
+    expect(state.value.cards.filter(cardMatches).map((c) => c.id)).toEqual(['002-y']);
+
+    resetFilters();
+    filters.project = 'app';
+    expect(state.value.cards.filter(cardMatches)).toHaveLength(2);
+
+    resetFilters();
+    filters.priorities = [1];
+    expect(state.value.cards.filter(cardMatches).map((c) => c.id)).toEqual(['002-y']);
+
+    resetFilters();
+    filters.locked = true;
+    expect(state.value.cards.filter(cardMatches).map((c) => c.id)).toEqual(['002-y']);
+    filters.locked = false;
+
+    state.value.questions = [thread([agent('Waiting')])];
+    resetFilters();
+    filters.waiting = true;
+    expect(state.value.cards.filter(cardMatches).map((c) => c.id)).toEqual(['001-x']);
+
+    resetFilters();
+    expect(filterActive.value).toBe(false);
+  });
+
+  it('строка фильтров показывает счётчик и очищается', async () => {
+    state.value = board([card()]);
+    const wrapper = mount(FilterBar, { attachTo: document.body });
+    await wrapper.find('input[name="search"]').setValue('nothing-here');
+    expect(wrapper.find('.filter-count').text()).toBe('0 of 1');
+    await wrapper.find('button[title="Clear filters"]').trigger('click');
+    expect(filters.query).toBe('');
+    expect(wrapper.find('.filter-count').exists()).toBe(false);
     wrapper.unmount();
   });
 });

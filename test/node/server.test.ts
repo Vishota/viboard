@@ -311,3 +311,26 @@ describe('режим с паролем', () => {
     await app.close();
   });
 });
+
+describe('поиск по тексту (карточка 044)', () => {
+  it('находит запрос в постановке и в записях лога, но не в чужих карточках', async () => {
+    const app = await boot();
+    await call(
+      app.port,
+      post(app.origin, '/api/card', { project: 'test', title: 'Title only', body: 'the body mentions typography' }),
+    );
+    await call(app.port, post(app.origin, '/api/card', { project: 'test', title: 'Other', body: 'nothing here' }));
+    claim(app.board, '002', 'cccc3333');
+    const names = async (q: string): Promise<string[]> =>
+      (
+        JSON.parse((await call(app.port, { path: `/api/search?q=${encodeURIComponent(q)}` })).body) as {
+          names: string[];
+        }
+      ).names;
+    expect(await names('TYPOGRAPHY')).toEqual(['test-P3-001-title-only']);
+    expect(await names('claim')).toEqual(['test-P3-002-other']);
+    expect(await names('absent')).toEqual([]);
+    expect((await call(app.port, { path: '/api/search' })).status).toBe(200);
+    await app.close();
+  });
+});

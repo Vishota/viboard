@@ -2,13 +2,14 @@
 import { computed, ref } from 'vue';
 import { api } from '../api';
 import { confirmDialog, toast } from '../modal';
-import { state, sync } from '../store';
+import { cardMatches, filterActive, state, sync } from '../store';
 import CardItem from './CardItem.vue';
 
 const props = defineProps<{ column: string }>();
 
 const over = ref(false);
-const cards = computed(() => state.value?.cards.filter((c) => c.column === props.column) ?? []);
+const total = computed(() => state.value?.cards.filter((c) => c.column === props.column).length ?? 0);
+const cards = computed(() => state.value?.cards.filter((c) => c.column === props.column && cardMatches(c)) ?? []);
 
 async function run(request: Promise<unknown>): Promise<void> {
   try {
@@ -57,6 +58,6 @@ async function remove(): Promise<void> {
       </button>
     </header>
     <CardItem v-for="card in cards" :key="card.id" :card="card" />
-    <p v-if="cards.length === 0" class="empty">empty</p>
+    <p v-if="cards.length === 0" class="empty">{{ filterActive && total > 0 ? 'no matches' : 'empty' }}</p>
   </section>
 </template>

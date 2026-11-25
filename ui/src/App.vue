@@ -4,6 +4,7 @@ import AppHeader from './components/AppHeader.vue';
 import AuthGate from './components/AuthGate.vue';
 import BoardView from './components/BoardView.vue';
 import ChatPanel from './components/ChatPanel.vue';
+import FilterBar from './components/FilterBar.vue';
 import ModalHost from './components/ModalHost.vue';
 import ToastHost from './components/ToastHost.vue';
 import { connection, locked, startPolling, state } from './store';
@@ -14,6 +15,7 @@ onMounted(startPolling);
 <template>
   <div class="app">
     <AppHeader />
+    <FilterBar />
     <main class="app-main">
       <BoardView v-if="state" />
       <AuthGate v-else-if="locked" />

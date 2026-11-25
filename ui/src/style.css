@@ -1011,3 +1011,73 @@ a {
   font-size: 13px;
   margin: 10px 0;
 }
+
+/* --- поиск и фильтры (карточка 044) --- */
+
+.filterbar {
+  position: sticky;
+  top: 53px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.filter-query {
+  flex: 1 1 220px;
+  max-width: 340px;
+}
+
+.filter-project {
+  flex: 0 1 200px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 4px;
+}
+
+.chip.filter-priority,
+.chip.filter-toggle {
+  background: var(--card);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.chip.filter-priority:not(.on) {
+  background: none;
+  color: var(--dim);
+  border-color: var(--line);
+}
+
+.chip.filter-priority.chip-p1.on,
+.chip.filter-priority.chip-p2.on {
+  background: var(--acc);
+}
+
+.chip.filter-toggle.on {
+  border-color: var(--acc);
+  color: var(--fg);
+}
+
+.filter-count {
+  color: var(--dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .filterbar {
+    top: 53px;
+  }
+
+  .filter-query {
+    max-width: none;
+    flex-basis: 100%;
+  }
+}

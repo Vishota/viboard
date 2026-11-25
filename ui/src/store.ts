@@ -1,5 +1,5 @@
-import { computed, ref, shallowRef } from 'vue';
-import type { BoardState } from '@core/types';
+import { computed, reactive, ref, shallowRef, watch } from 'vue';
+import type { BoardState, CardSummary } from '@core/types';
 
 /** Состояние доски — проекция файловой системы с сервера; обновляется опросом и после каждого действия. */
 export const state = shallowRef<BoardState | null>(null);
@@ -51,3 +51,73 @@ export const unreadCount = computed(() => state.value?.questions.filter((q) => q
 export const projectName = (id: string): string => state.value?.projects.find((p) => p.id === id)?.name ?? id;
 
 export const cardTitle = (id: string): string => state.value?.cards.find((c) => c.id === id)?.title ?? id;
+
+// --- фильтры и поиск (карточка 044) ---
+
+export const filters = reactive({
+  query: '',
+  project: '',
+  priorities: [] as number[],
+  locked: false,
+  waiting: false,
+});
+/** Карточки, у которых запрос найден в тексте постановки (ищет сервер); имя папки → совпадение. */
+export const bodyHits = ref<Set<string>>(new Set());
+
+export function resetFilters(): void {
+  filters.query = '';
+  filters.project = '';
+  filters.priorities = [];
+  filters.locked = false;
+  filters.waiting = false;
+}
+
+export const filterActive = computed(
+  () =>
+    filters.query.trim() !== '' ||
+    filters.project !== '' ||
+    filters.priorities.length > 0 ||
+    filters.locked ||
+    filters.waiting,
+);
+
+/** Видна ли карточка при текущих фильтрах. */
+export function cardMatches(c: CardSummary): boolean {
+  if (filters.project !== '' && c.project !== filters.project) return false;
+  if (filters.priorities.length > 0 && !filters.priorities.includes(c.priority)) return false;
+  if (filters.locked && c.lockedBy === null) return false;
+  if (filters.waiting && !state.value?.questions.some((q) => q.card === c.id && q.lastFrom === 'agent')) {
+    return false;
+  }
+  const query = filters.query.trim().toLowerCase();
+  if (query === '') return true;
+  const haystack = `${c.title}\n${c.id}\n${c.name}\n${projectName(c.project)}`.toLowerCase();
+  return haystack.includes(query) || bodyHits.value.has(c.name);
+}
+
+export const visibleCount = computed(() => state.value?.cards.filter(cardMatches).length ?? 0);
+
+// текст постановки ищет сервер: запрос → карточки, у которых он есть в README (с задержкой на набор)
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  () => filters.query,
+  (query) => {
+    if (searchTimer !== undefined) clearTimeout(searchTimer);
+    const q = query.trim();
+    if (q.length < 2) {
+      bodyHits.value = new Set();
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return;
+        bodyHits.value = new Set(((await response.json()) as { names: string[] }).names);
+      } catch {
+        /* поиск по тексту недоступен — остаётся поиск по названию */
+      }
+    }, 200);
+  },
+);
