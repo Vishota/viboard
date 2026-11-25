@@ -11,11 +11,15 @@ import { t } from './i18n';
 import ModalHost from './components/ModalHost.vue';
 import ToastHost from './components/ToastHost.vue';
 import { connection, locked, startPolling, state } from './store';
+import { restoreFromUrl, startUrlSync } from './url';
 
 // первый вход: один раз показать, что это и с чего начать (карточка 048)
 const ONBOARDED = 'viboard.onboarded';
 onMounted(() => {
   startPolling();
+  // карточка 072: сначала открываем то, что в адресе, затем адрес следует за окнами
+  restoreFromUrl();
+  startUrlSync();
   let seen = false;
   try {
     seen = localStorage.getItem(ONBOARDED) === '1';

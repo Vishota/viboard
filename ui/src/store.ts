@@ -7,6 +7,8 @@ export const connection = ref<'connecting' | 'online' | 'offline'>('connecting')
 /** Сервер требует вход по паролю. */
 export const locked = ref(false);
 export const chatOpen = ref(false);
+/** Открытый тред чата (dir); null — список. Переживает закрытие панели и попадает в адрес (карточка 072). */
+export const activeThread = ref<string | null>(null);
 
 const POLL_MS = 2500;
 let snapshot = '';

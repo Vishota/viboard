@@ -30,7 +30,8 @@ const entryLabel = (entry: LogEntry): string =>
 
 async function load(): Promise<void> {
   if (!summary.value) {
-    closeModal(modalId); // карточку удалили
+    // карточки нет на загруженной доске — удалили. Доска ещё не пришла (открыли по ссылке) — ждём её, не закрываясь
+    if (state.value) closeModal(modalId);
     return;
   }
   try {

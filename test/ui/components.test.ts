@@ -7,8 +7,9 @@ import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import SyncPanel from '../../ui/src/components/SyncPanel.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
-import { toasts } from '../../ui/src/modal';
+import { modals, toasts } from '../../ui/src/modal';
 import {
+  activeThread,
   bodyHits,
   cardMatches,
   filterActive,
@@ -109,6 +110,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
   state.value = null;
   chatOpen.value = false;
+  activeThread.value = null;
+  modals.splice(0);
+  window.history.replaceState(null, '/', '/'); // адрес переживает тест и открывал бы окно в следующем
 });
 
 describe('тред чата', () => {
@@ -439,6 +443,7 @@ describe('локализация интерфейса (карточка 048)', (
     expect(first.find('[role="dialog"] h3').text()).toBe('How viboard works');
     expect(first.findAll('.help-steps li')).toHaveLength(3);
     first.unmount();
+    window.history.replaceState(null, '/', '/'); // открытая справка осталась в адресе
 
     const second = mount(App, { attachTo: document.body });
     await flushPromises();
@@ -494,5 +499,76 @@ describe('синхронизация с git (карточка 049)', () => {
     expect(toasts.value.map((item) => [item.text, item.kind])).toContainEqual(['The conflict is still there', 'error']);
     expect(toasts.value.some((item) => item.text === 'Synced')).toBe(false);
     wrapper.unmount();
+  });
+});
+
+describe('адрес страницы хранит открытое (карточка 072)', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('ссылка с карточкой открывает карточку; открытое окно попадает в адрес и уходит оттуда при закрытии', async () => {
+    const base = stubServer(() => board([card()]));
+    const one = card();
+    const detail = {
+      card: {
+        ...one,
+        board: 'C:/boards/demo',
+        dir: 'C:/boards/demo/todo/app-001-x',
+        meta: {},
+        body: 'Постановка задачи',
+        lockedAt: null,
+      },
+      entries: [],
+      assetSizes: {},
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit): Promise<object> =>
+        String(url).startsWith('/api/card')
+          ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(detail) })
+          : base(url, init),
+      ),
+    );
+    window.history.replaceState(null, '', '/?card=app-001-x');
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    await flushPromises();
+    expect(document.body.textContent).toContain('Задача');
+    expect(window.location.search).toBe('?card=app-001-x');
+
+    void document.querySelector<HTMLButtonElement>('.modal button')?.click();
+    await flushPromises();
+    expect(window.location.search).toBe('');
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('ссылка на тред открывает чат на этом треде; адрес меняется вместе с чатом', async () => {
+    const dir = '2026-11-24T165125Z-41ae8240-q';
+    const one = thread([agent('Thread question')]);
+    const withThreads = { ...board(), questions: [{ ...one, dir, card: '' }] };
+    stubServer(() => withThreads);
+    window.history.replaceState(null, '', `/?thread=${dir}&chat=1`);
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    await flushPromises();
+    expect(document.body.textContent).toContain('Thread question');
+    expect(window.location.search).toBe(`?chat=1&thread=${dir}`);
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('?help и ?board открываются по ссылке; несколько окон — в порядке стека', async () => {
+    stubServer(() => board());
+    window.history.replaceState(null, '', '/?board=1&help=1');
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    await flushPromises();
+    expect(document.querySelectorAll('.modal')).toHaveLength(2);
+    expect(window.location.search).toBe('?board=1&help=1');
+    wrapper.unmount();
+    document.body.innerHTML = '';
   });
 });
