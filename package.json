@@ -1,14 +1,14 @@
 {
   "name": "viboard",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "File-based task board: Trello for you, ls and cat for your AI agent",
   "license": "GPL-3.0-only",
   "author": "Vishota",
-  "homepage": "https://vishota.com/projects/viboard",
-  "bugs": "https://vishota.com/projects/viboard/forum/viboard-issues",
+  "homepage": "https://github.com/Vishota/viboard",
+  "bugs": "https://github.com/Vishota/viboard/issues",
   "repository": {
     "type": "git",
-    "url": "https://vishota.com/projects/viboard"
+    "url": "git+https://github.com/Vishota/viboard.git"
   },
   "type": "module",
   "engines": {

@@ -69,8 +69,8 @@ const readMore = ref(false);
     </template>
 
     <p class="help-text">
-      {{ t('Guide, use cases and news:') }}
-      <a href="https://vishota.com/projects/viboard" target="_blank" rel="noopener">vishota.com/projects/viboard</a>
+      {{ t('Guide, use cases and issues:') }}
+      <a href="https://github.com/Vishota/viboard" target="_blank" rel="noopener">github.com/Vishota/viboard</a>
     </p>
 
     <div class="actions">
