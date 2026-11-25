@@ -43,14 +43,14 @@ describe('initBoard', () => {
 
   it('повторный init ничего не перезаписывает; --update-protocol обновляет только протокол', async () => {
     const board = join(root, 'board');
-    mkdirSync(join(board, 'todo', 'app-P1-001-lichnaya'));
-    writeFileSync(join(board, 'todo', 'app-P1-001-lichnaya', 'README.md'), '');
+    mkdirSync(join(board, 'todo', 'app-001-lichnaya'));
+    writeFileSync(join(board, 'todo', 'app-001-lichnaya', 'README.md'), '');
     writeFileSync(join(board, 'manager.md'), 'правка владельца');
     const again = await init(board);
     expect(again.created).toBe(false);
     expect(again.protocol).toEqual([]);
     expect(readFileSync(join(board, 'manager.md'), 'utf8')).toBe('правка владельца');
-    expect(readdirSync(join(board, 'todo'))).toContain('app-P1-001-lichnaya');
+    expect(readdirSync(join(board, 'todo'))).toContain('app-001-lichnaya');
 
     const updated = await init(board, true);
     expect(updated.protocol).toEqual([...PROTOCOL_FILES, SHELL_DOC]);

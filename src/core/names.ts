@@ -37,9 +37,11 @@ const P = {
 const ID = `${P.num}-${P.slug}`;
 const LOG = LOG_KINDS.join('|');
 
-// <проект>-P<1..5>-<NNN>-<слаг>: `ls` группирует по проекту и приоритету. `-P<n>-` с большой буквы
-// не встречается в нижнерегистровых id проектов и слагах — поля разделяются однозначно.
-export const CARD_NAME_RE = new RegExp(`^(${P.project})-P([1-5])-(${ID})$`);
+// <проект>-<NNN>-<слаг>: приоритет живёт только в карточке, не в имени (UD-40). Проект жадный, id закреплён
+// за концом строки — имя разбирается однозначно, пока id проекта не кончается на `-<цифры>-<слаг>`.
+export const CARD_NAME_RE = new RegExp(`^(${P.project})-(${ID})$`);
+/** Прежний формат <проект>-P<1..5>-<NNN>-<слаг>: читается, переводится в новый через `viboard fix`. */
+export const LEGACY_CARD_NAME_RE = new RegExp(`^(${P.project})-P([1-5])-(${ID})$`);
 export const ID_RE = new RegExp(`^${ID}$`);
 export const SLUG_RE = new RegExp(`^${P.slug}$`);
 export const PROJECT_RE = new RegExp(`^${P.project}$`);
@@ -190,10 +192,15 @@ export function nextId(ids: Iterable<string>, slug: string): string {
   return `${String(max + 1).padStart(3, '0')}-${slug}`;
 }
 
-export const cardName = (project: string, priority: number, id: string): string => `${project}-P${priority}-${id}`;
+export const cardName = (project: string, id: string): string => `${project}-${id}`;
 
-export function parseCardName(name: string): { project: string; priority: number; id: string } | null {
+export function parseCardName(name: string): { project: string; id: string } | null {
   const m = CARD_NAME_RE.exec(name);
+  return m?.[1] && m[2] ? { project: m[1], id: m[2] } : null;
+}
+
+export function parseLegacyCardName(name: string): { project: string; priority: number; id: string } | null {
+  const m = LEGACY_CARD_NAME_RE.exec(name);
   return m?.[1] && m[2] && m[3] ? { project: m[1], priority: Number(m[2]), id: m[3] } : null;
 }
 

@@ -38,7 +38,7 @@ const thread = (messages: Message[]): Thread => ({
 });
 
 const card = (extra: Partial<CardSummary> = {}): CardSummary => ({
-  name: 'app-P3-001-x',
+  name: 'app-001-x',
   id: '001-x',
   slug: 'x',
   column: 'todo',
@@ -201,7 +201,7 @@ describe('доска', () => {
   it('колонки — имена файловой системы; занятая карточка не перетаскивается и показывает лок', () => {
     state.value = board([
       card(),
-      card({ id: '002-y', name: 'app-P1-002-y', title: 'Срочная', priority: 1, column: 'doing', lockedBy: 'aaaa1111' }),
+      card({ id: '002-y', name: 'app-002-y', title: 'Срочная', priority: 1, column: 'doing', lockedBy: 'aaaa1111' }),
     ]);
     const wrapper = mount(BoardView);
     const columns = wrapper.findAll('.column');
@@ -262,13 +262,13 @@ describe('поиск и фильтры (карточка 044)', () => {
       card(),
       card({
         id: '002-y',
-        name: 'app-P1-002-y',
+        name: 'app-002-y',
         title: 'Urgent fix',
         priority: 1,
         column: 'doing',
         lockedBy: 'aaaa1111',
       }),
-      card({ id: '003-z', name: 'other-P5-003-z', project: 'other', title: 'Elsewhere', priority: 5 }),
+      card({ id: '003-z', name: 'other-003-z', project: 'other', title: 'Elsewhere', priority: 5 }),
     ]);
     expect(state.value.cards.filter(cardMatches)).toHaveLength(3);
 
@@ -324,7 +324,7 @@ describe('локализация интерфейса (карточка 048)', (
     expect(wrapper.find('header .btn').text()).toBe('+ Задача');
     expect(wrapper.find('.column h2').text()).toBe('backlog'); // имя каталога
     expect(wrapper.find('.filter-project option').text()).toBe('Все проекты');
-    expect(state.value.cards[0]?.name).toBe('app-P3-001-x'); // данные не тронуты
+    expect(state.value.cards[0]?.name).toBe('app-001-x'); // данные не тронуты
     expect(t('Board moved to {path}', { path: 'C:/b' })).toBe('Доска перенесена в C:/b');
     wrapper.unmount();
   });

@@ -5,6 +5,7 @@ import type * as Fs from 'node:fs';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { listCards, listGhosts, oneCard } from '../../src/core/board.js';
 import { checkBoard, fixBoard } from '../../src/core/check.js';
+import { readText, writeAtomic } from '../../src/core/fs.js';
 import { PROTOCOL_DIR } from '../../src/core/paths.js';
 import { addLog, ask, claim, createCard, editCard, lockCard, moveCard } from '../../src/core/ops.js';
 import { initBoard } from '../../src/core/setup.js';
@@ -85,22 +86,22 @@ describe('запись старого формата', () => {
   });
 });
 
-// Карточка 050: смена приоритета переименовывает папку; запись в старый путь создавала второй каталог с тем же id.
+// Карточка 050: в старом имени была приоритет, и запись в старый путь после переименования создавала второй
+// каталог с тем же id. С UD-40 приоритета в имени нет; остатки старого формата читаются и переводятся fix-ом.
 describe('два каталога с одним id', () => {
-  it('обращение по точному имени работает; check видит дубль и «призрака»; fix переносит содержимое и удаляет призрака', async () => {
+  it('обращение по точному имени работает; check видит «призрака»; fix переносит содержимое и удаляет призрака', async () => {
     const board = await fresh('duplicate');
     const card = createCard(board, { project: 'legacy', title: 'Dup', body: 'text' });
-    editCard(board, card.id, { priority: 1 }); // владелец поднял приоритет — папка переименована
-    const ghost = join(board, card.column, card.name);
-    mkdirSync(join(ghost, 'log'), { recursive: true }); // кто-то написал в старый путь
+    const ghost = join(board, card.column, 'legacy-P1-001-dup');
+    mkdirSync(join(ghost, 'log'), { recursive: true }); // кто-то написал по старому пути
     writeFileSync(join(ghost, 'log', '2026-11-24T100000Z-bbbb2222-note.md'), '---\ntype: note\n---\n\nstale');
 
-    expect(oneCard(board, 'legacy-P1-001-dup').priority).toBe(1);
-    expect(oneCard(board, card.id).name).toBe('legacy-P1-001-dup'); // призрак не мешает поиску по id
-    expect(listCards(board).map((c) => c.name)).toEqual(['legacy-P1-001-dup']); // призрак — не карточка
+    expect(oneCard(board, 'legacy-001-dup').priority).toBe(3);
+    expect(oneCard(board, card.id).name).toBe('legacy-001-dup'); // призрак не мешает поиску по id
+    expect(listCards(board).map((c) => c.name)).toEqual(['legacy-001-dup']); // призрак — не карточка
 
     const texts = checkBoard(board, { protocolVersion: '0.1.0-test' }).map((f) => `${f.level}: ${f.text}`);
-    expect(texts.some((t) => t.startsWith('error: ') && t.includes('leftover folder of legacy-P1-001-dup'))).toBe(true);
+    expect(texts.some((t) => t.startsWith('error: ') && t.includes('leftover folder of legacy-001-dup'))).toBe(true);
 
     const done = fixBoard(board);
     expect(done.some((line) => line.endsWith('leftover folder removed'))).toBe(true);
@@ -109,13 +110,38 @@ describe('два каталога с одним id', () => {
     expect(checkBoard(board, { protocolVersion: '0.1.0-test' })).toEqual([]);
   });
 
+  it('старый формат <проект>-P<n>-<NNN>-<слаг> читается; check указывает на fix; fix переименовывает без потери приоритета (UD-40)', async () => {
+    const board = await fresh('oldname');
+    const card = createCard(board, { project: 'legacy', title: 'Old', body: 'text' });
+    const old = join(board, card.column, 'legacy-P1-001-old');
+    renameSync(card.dir, old);
+
+    const before = oneCard(board, '001');
+    expect(before).toMatchObject({ name: 'legacy-P1-001-old', priority: 3, project: 'legacy' });
+    const texts = checkBoard(board, { protocolVersion: '0.1.0-test' }).map((f) => f.text);
+    expect(texts.some((t) => t.includes('expected legacy-001-old (viboard fix)'))).toBe(true);
+
+    expect(fixBoard(board)).toEqual(['legacy-P1-001-old → legacy-001-old']);
+    expect(oneCard(board, '001')).toMatchObject({ name: 'legacy-001-old', priority: 3 });
+    expect(checkBoard(board, { protocolVersion: '0.1.0-test' })).toEqual([]);
+    expect(readText(join(board, 'todo', 'legacy-001-old', 'README.md'))).toContain('priority: 3');
+  });
+
+  it('в старой папке без приоритета в README приоритет берётся из имени', async () => {
+    const board = await fresh('oldname-nofm');
+    const card = createCard(board, { project: 'legacy', title: 'NoFm', body: 'text' });
+    const old = join(board, card.column, 'legacy-P2-001-nofm');
+    renameSync(card.dir, old);
+    writeAtomic(join(old, 'README.md'), `---\nid: ${card.id}\nproject: legacy\ntitle: NoFm\n---\n\ntext\n`);
+    expect(oneCard(board, '001').priority).toBe(2);
+  });
+
   it('запись по исчезнувшему пути не пересоздаёт папку', async () => {
     const board = await fresh('stale');
     const card = createCard(board, { project: 'legacy', title: 'Stale', body: 'text' });
-    editCard(board, card.id, { priority: 1 }); // папка переименована
-    const stale = { ...card, priority: 1 };
-    expect(() => addLog(stale, { type: 'note', session: 'bbbb2222', text: 'late' })).toThrow(/renamed or moved/u);
-    expect(() => lockCard(stale, 'bbbb2222')).toThrow(/renamed or moved/u);
+    editCard(board, card.id, { project: 'other' }); // смена проекта переименовывает папку
+    expect(() => addLog(card, { type: 'note', session: 'bbbb2222', text: 'late' })).toThrow(/renamed or moved/u);
+    expect(() => lockCard(card, 'bbbb2222')).toThrow(/renamed or moved/u);
     expect(existsSync(card.dir)).toBe(false);
     expect(listGhosts(board)).toEqual([]);
   });

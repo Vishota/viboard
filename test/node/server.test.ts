@@ -169,7 +169,7 @@ describe('локальный режим', () => {
       post(app.origin, '/api/card', { project: 'test', title: 'Задача', body: 'Текст', priority: 2 }),
     );
     expect(created.status).toBe(200);
-    expect(JSON.parse(created.body)).toMatchObject({ card: { name: 'test-P2-001-zadacha', column: 'todo' } });
+    expect(JSON.parse(created.body)).toMatchObject({ card: { name: 'test-001-zadacha', column: 'todo' } });
 
     const detail = JSON.parse((await call(app.port, { path: '/api/card?id=001' })).body) as CardDetail;
     expect(detail.card.title).toBe('Задача');
@@ -209,7 +209,7 @@ describe('локальный режим', () => {
     expect(moved.status).toBe(400);
     expect(JSON.parse(moved.body)).toEqual({
       error:
-        'test-P3-001-zanyataya: in progress (lock-aaaa1111) — only the lock holder moves it; --force removes the lock',
+        'test-001-zanyataya: in progress (lock-aaaa1111) — only the lock holder moves it; --force removes the lock',
     });
     await app.close();
   });
@@ -327,8 +327,8 @@ describe('поиск по тексту (карточка 044)', () => {
           names: string[];
         }
       ).names;
-    expect(await names('TYPOGRAPHY')).toEqual(['test-P3-001-title-only']);
-    expect(await names('claim')).toEqual(['test-P3-002-other']);
+    expect(await names('TYPOGRAPHY')).toEqual(['test-001-title-only']);
+    expect(await names('claim')).toEqual(['test-002-other']);
     expect(await names('absent')).toEqual([]);
     expect((await call(app.port, { path: '/api/search' })).status).toBe(200);
     await app.close();

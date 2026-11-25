@@ -4,9 +4,19 @@
 import { readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { unquote, metaInt, metaStr, parseDoc, type Doc } from './frontmatter.js';
+import { unquote, metaStr, parseDoc, type Doc } from './frontmatter.js';
 import { isRealDir, isRealFile, listDirs, listFiles, mtimeMs, readText, writeAtomic } from './fs.js';
-import { APP, ID_RE, LEGACY_LOCK, LOCK, cardName, parseCardName, parseEntryName, type Verdict } from './names.js';
+import {
+  APP,
+  ID_RE,
+  LEGACY_LOCK,
+  LOCK,
+  cardName,
+  parseCardName,
+  parseEntryName,
+  parseLegacyCardName,
+  type Verdict,
+} from './names.js';
 import type { Card, CardSummary, LogEntry, Project } from './types.js';
 import { Fail } from './errors.js';
 
@@ -71,10 +81,20 @@ export function writeProjects(board: string, projects: Project[]): void {
   writeAtomic(join(board, 'projects.yml'), `${head}\n${body}`);
 }
 
+/** Приоритет — из frontmatter; для старой папки без поля в README — из её имени. Найдено тестом: пустого поля
+ *  metaInt не замечал и отдавал 0. */
+function cardPriority(doc: Doc, fromName: number | undefined): number {
+  const raw = metaStr(doc, 'priority');
+  const n = Number(raw);
+  return raw !== '' && Number.isFinite(n) ? n : (fromName ?? 3);
+}
+
 export function readCard(board: string, column: string, name: string): Card {
   const dir = join(board, column, name);
   const doc = parseDoc(readText(join(dir, 'README.md')) ?? '');
   const parts = parseCardName(name);
+  // прежний формат имени с приоритетом (UD-40): значения из имени — запасные, пока frontmatter молчит
+  const legacy = parseLegacyCardName(name);
   const fmId = metaStr(doc, 'id');
   const id = ID_RE.test(fmId) ? fmId : (parts?.id ?? name);
   let lockedBy: string | null = null;
@@ -99,8 +119,8 @@ export function readCard(board: string, column: string, name: string): Card {
     name,
     id,
     slug: id.replace(/^\d+-/u, ''),
-    project: metaStr(doc, 'project', parts?.project ?? ''),
-    priority: metaInt(doc, 'priority', parts?.priority ?? 3),
+    project: metaStr(doc, 'project', parts?.project ?? legacy?.project ?? ''),
+    priority: cardPriority(doc, legacy?.priority),
     title: metaStr(doc, 'title'),
     meta: Object.fromEntries(doc.fields.map((f) => [f.key, f.value])),
     body: doc.body,
@@ -111,7 +131,8 @@ export function readCard(board: string, column: string, name: string): Card {
   };
 }
 
-const isCardLike = (name: string): boolean => parseCardName(name) !== null || /^\d{3,}-/u.test(name);
+const isCardLike = (name: string): boolean =>
+  parseCardName(name) !== null || parseLegacyCardName(name) !== null || /^\d{3,}-/u.test(name);
 
 /** Каталоги-«призраки»: выглядят как карточки, но без README — остаток старого пути после переименования. */
 export function listGhosts(board: string): { column: string; name: string; dir: string; id: string }[] {
@@ -120,7 +141,7 @@ export function listGhosts(board: string): { column: string; name: string; dir: 
     for (const name of listDirs(join(board, column))) {
       const dir = join(board, column, name);
       if (isCardLike(name) && !isRealFile(join(dir, 'README.md'))) {
-        out.push({ column, name, dir, id: parseCardName(name)?.id ?? name });
+        out.push({ column, name, dir, id: parseCardName(name)?.id ?? parseLegacyCardName(name)?.id ?? name });
       }
     }
   }
@@ -192,7 +213,7 @@ export const summaryOf = (c: Card): CardSummary => ({
 export const readCardDoc = (card: Card): Doc => parseDoc(readText(join(card.dir, 'README.md')) ?? '');
 
 /** Как должна назляться карточка по её frontmatter. */
-export const expectedName = (card: Card): string => cardName(card.project, card.priority, card.id);
+export const expectedName = (card: Card): string => cardName(card.project, card.id);
 
 const VERDICTS: readonly Verdict[] = ['ready', 'pass', 'fail'];
 

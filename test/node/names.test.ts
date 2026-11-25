@@ -5,6 +5,7 @@ import {
   lockTag,
   nextId,
   parseCardName,
+  parseLegacyCardName,
   parseEntryName,
   sessionTag,
   slugify,
@@ -53,16 +54,23 @@ describe('id и имена карточек', () => {
     expect(nextId(['999-a'], 'next')).toBe('1000-next');
   });
 
-  it('<проект>-P<n>-<NNN>-<слаг> разбирается однозначно', () => {
-    expect(parseCardName('vishota.com-P1-003-tipografika')).toEqual({
+  it('<проект>-<NNN>-<слаг> разбирается однозначно; приоритета в имени нет (UD-40)', () => {
+    expect(parseCardName('vishota.com-003-tipografika')).toEqual({ project: 'vishota.com', id: '003-tipografika' });
+    expect(parseCardName('my-app-012-x')).toEqual({ project: 'my-app', id: '012-x' });
+    expect(parseCardName('my-app-1-x')).toBeNull();
+    expect(parseCardName('001-task')).toBeNull();
+    expect(cardName('app', '001-task')).toBe('app-001-task');
+  });
+
+  it('прежний формат <проект>-P<n>-<NNN>-<слаг> распознаётся отдельно от текущего', () => {
+    expect(parseLegacyCardName('vishota.com-P1-003-tipografika')).toEqual({
       project: 'vishota.com',
       priority: 1,
       id: '003-tipografika',
     });
-    expect(parseCardName('my-app-p1-003-tipografika')).toBeNull();
-    expect(parseCardName('app-P9-003-x')).toBeNull();
-    expect(parseCardName('001-task')).toBeNull();
-    expect(cardName('app', 2, '001-task')).toBe('app-P2-001-task');
+    expect(parseCardName('vishota.com-P1-003-tipografika')).toBeNull();
+    expect(parseLegacyCardName('app-003-x')).toBeNull();
+    expect(parseLegacyCardName('app-P9-003-x')).toBeNull();
   });
 });
 

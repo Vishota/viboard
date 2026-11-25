@@ -107,7 +107,7 @@ export function createCard(board: string, input: CardInput): Card {
     listCards(board).map((c) => c.id),
     slug,
   );
-  const name = cardName(project, priority, id);
+  const name = cardName(project, id);
   const dir = join(board, column, name);
   ensureDir(join(board, column));
   try {
@@ -123,7 +123,7 @@ export function createCard(board: string, input: CardInput): Card {
   return readCard(board, column, name);
 }
 
-/** Правка frontmatter/постановки; при смене проекта или приоритета каталог переименовывается под них. */
+/** Правка frontmatter/постановки; при смене проекта каталог переименовывается. Приоритет имени не меняет (UD-40). */
 export function editCard(board: string, ref: string, patch: CardPatch): Card {
   let card = oneCard(board, ref);
   assertAlive(card);

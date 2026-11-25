@@ -64,7 +64,7 @@ describe('карточки', () => {
   it('создание: имя из проекта, приоритета и id; README с frontmatter', async () => {
     const board = await fresh();
     const a = card(board, 'Проверить типографику', { priority: 1, body: 'Тело задачи' });
-    expect(a.name).toBe('app-P1-001-proverit-tipografiku');
+    expect(a.name).toBe('app-001-proverit-tipografiku');
     expect(a.column).toBe('todo');
     expect(a.id).toBe('001-proverit-tipografiku');
     expect(a.lockedBy).toBeNull();
@@ -73,7 +73,7 @@ describe('карточки', () => {
     expect(readme).toContain('priority: 1');
     expect(readme).toContain('Тело задачи');
     expect(existsSync(join(a.dir, 'log'))).toBe(true);
-    expect(card(board, 'Вторая').name).toBe('app-P3-002-vtoraya');
+    expect(card(board, 'Вторая').name).toBe('app-002-vtoraya');
   });
 
   it('неверные проект, приоритет, название — ошибка', async () => {
@@ -85,7 +85,7 @@ describe('карточки', () => {
     expect(listCards(board)).toHaveLength(0);
   });
 
-  it('правка: смена приоритета или проекта переименовывает каталог, чужие поля не теряются', async () => {
+  it('правка: смена приоритета не переименовывает каталог (UD-40), смена проекта — переименовывает; чужие поля не теряются', async () => {
     const board = await fresh();
     const a = card(board, 'Задача');
     writeAtomic(
@@ -93,13 +93,13 @@ describe('карточки', () => {
       `---\nid: ${a.id}\nproject: app\ntitle: Задача\npriority: 3\ndod:\n  - Критерий один\n  - Критерий два\n---\n\nТело\n`,
     );
     const b = editCard(board, a.id, { priority: 1, title: 'Задача (срочно)' });
-    expect(b.name).toBe('app-P1-001-zadacha');
-    expect(existsSync(a.dir)).toBe(false);
+    expect(b).toMatchObject({ name: a.name, dir: a.dir, priority: 1 });
+    expect(existsSync(a.dir)).toBe(true);
     const readme = readText(join(b.dir, 'README.md')) ?? '';
     expect(readme).toContain('dod:\n  - Критерий один\n  - Критерий два');
     expect(readme).toContain('title: Задача (срочно)');
     const c = editCard(board, '001', { project: 'other' });
-    expect(c.name).toBe('other-P1-001-zadacha');
+    expect(c.name).toBe('other-001-zadacha');
     expect(() => editCard(board, '001', { body: ' ' })).toThrow(/empty/u);
   });
 });
@@ -233,7 +233,7 @@ describe('колонки и проекты', () => {
     expect(p).toEqual({ id: 'sayt', name: 'Сайт', path: 'E:\\proj\\site' });
     expect(readProjects(board).map((x) => x.id)).toEqual(['test', 'sayt']);
     expect(() => addProject(board, { name: 'Сайт' })).toThrow(/already exists/u);
-    expect(card(board, 'Задача сайта', { project: 'sayt' }).name).toBe('sayt-P3-001-zadacha-sayta');
+    expect(card(board, 'Задача сайта', { project: 'sayt' }).name).toBe('sayt-001-zadacha-sayta');
   });
 });
 
@@ -297,10 +297,10 @@ describe('чек-лист менеджера и лента', () => {
 
     const texts = checkBoard(board, { protocolVersion: '0.1.0-test' }).map((f) => `${f.level}: ${f.text}`);
     expect(texts, texts.join('\n')).toContain(
-      'warn: doing/app-P3-002-bez-tega: no lock-<tag> — the claim was never confirmed → viboard mv 002-bez-tega todo',
+      'warn: doing/app-002-bez-tega: no lock-<tag> — the claim was never confirmed → viboard mv 002-bez-tega todo',
     );
     expect(texts.some((t) => t.includes(`${a.name}: lock-aaaa1111 is older than 30h`))).toBe(true);
-    expect(texts.some((t) => t.includes('review/app-P3-003-na-proverke: waiting for a reviewer'))).toBe(true);
+    expect(texts.some((t) => t.includes('review/app-003-na-proverke: waiting for a reviewer'))).toBe(true);
     expect(texts.some((t) => t.includes(`${d.name}: no entry in the board log/`))).toBe(true);
     expect(texts.some((t) => t.includes(`${e.name}: blocked without a thread`))).toBe(true);
     expect(texts.filter((t) => t.startsWith('error:'))).toHaveLength(0);
@@ -309,11 +309,11 @@ describe('чек-лист менеджера и лента', () => {
   it('имя ≠ frontmatter — замечание; fixBoard переименовывает', async () => {
     const board = await fresh();
     const a = card(board, 'Сбитое имя');
-    renameSync(a.dir, join(board, 'todo', 'app-P5-001-sbitoe-imya'));
+    renameSync(a.dir, join(board, 'todo', 'app-005-sbitoe-imya'));
     const texts = checkBoard(board, { protocolVersion: '0.1.0-test' }).map((f) => f.text);
-    expect(texts.some((t) => t.includes('expected app-P3-001-sbitoe-imya (viboard fix)'))).toBe(true);
-    expect(fixBoard(board)).toEqual(['app-P5-001-sbitoe-imya → app-P3-001-sbitoe-imya']);
-    expect(oneCard(board, '001').name).toBe('app-P3-001-sbitoe-imya');
+    expect(texts.some((t) => t.includes('expected app-001-sbitoe-imya (viboard fix)'))).toBe(true);
+    expect(fixBoard(board)).toEqual(['app-005-sbitoe-imya → app-001-sbitoe-imya']);
+    expect(oneCard(board, '001').name).toBe('app-001-sbitoe-imya');
   });
 
   it('лента собирает решения, вопросы и вердикты из карточек, новые сверху', async () => {
