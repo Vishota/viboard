@@ -182,4 +182,8 @@ export interface MoveResult {
   leftBehind: string[];
   /** Локи, снятые вместе со старой папкой при --force. */
   forcedLocks: string[];
+  /** Сменился ли default: только когда переносили доску по умолчанию. */
+  defaultChanged: boolean;
+  /** Какая папка теперь default. */
+  defaultPath: string;
 }

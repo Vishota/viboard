@@ -87,7 +87,30 @@ const inside = (parent: string, child: string): boolean => {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 };
 
-/** Перенос доски в другую папку: копия → сверка → удаление старой папки → новая папка становится default. */
+/** Старая папка удаляется по одной записи: один занятый файл не мешает удалить остальные.
+ *  Возвращает только то, что действительно осталось. */
+function removeLeftovers(source: string): string[] {
+  for (const entry of readdirSync(source)) {
+    try {
+      rmSync(join(source, entry), { recursive: true, force: true, maxRetries: 3, retryDelay: 150 });
+    } catch {
+      /* занят — останется в списке */
+    }
+  }
+  try {
+    rmSync(source, { recursive: true, force: true });
+  } catch {
+    /* осталась с занятыми файлами */
+  }
+  try {
+    return walk(source).map((file) => toPosix(relative(source, file)));
+  } catch {
+    return [];
+  }
+}
+
+/** Перенос доски в другую папку: копия → сверка → удаление старой папки; default следует за доской, только
+ *  если она им была. */
 export function moveBoard(from: string, to: string, options: { force?: boolean } = {}): MoveResult {
   const source = resolve(from.trim());
   const target = resolve(to.trim());
@@ -102,11 +125,23 @@ export function moveBoard(from: string, to: string, options: { force?: boolean }
   if (locked.length > 0 && !options.force) {
     throw new Fail(
       `agents are working on the board — ${locked.map((c) => `${c.id} (lock-${c.lockedBy ?? '?'})`).join(', ')}.\n` +
-        'They read files from the old folder; stop them first, or repeat with --force to move anyway.',
+        'They read files from the old folder; stop them first, or move anyway.',
     );
   }
+  // default меняется, только когда переносили саму доску по умолчанию (или default ещё не выбран):
+  // иначе перенос чужой доски молча подменял default устройства
+  const config = readConfig();
+  const changeDefault = config.board === undefined || same(resolve(config.board), source);
   mkdirSync(target, { recursive: true });
-  cpSync(source, target, { recursive: true });
+  try {
+    cpSync(source, target, { recursive: true });
+  } catch (e) {
+    rmSync(target, { recursive: true, force: true }); // частичная копия мешала бы повторной попытке
+    const file = (e as NodeJS.ErrnoException & { path?: string }).path;
+    throw new Fail(
+      `cannot copy ${file === undefined ? 'the board' : toPosix(relative(source, file))}: ${(e as Error).message} — the board was not moved; close the program that holds the file`,
+    );
+  }
   const files = walk(source);
   const mismatched = files.find((file) => {
     const copy = join(target, relative(source, file));
@@ -116,18 +151,15 @@ export function moveBoard(from: string, to: string, options: { force?: boolean }
     rmSync(target, { recursive: true, force: true });
     throw new Fail(`copy verification failed on ${toPosix(relative(source, mismatched))} — the board was not moved`);
   }
-  const leftBehind: string[] = [];
-  try {
-    rmSync(source, { recursive: true, force: true, maxRetries: 3, retryDelay: 150 });
-  } catch {
-    for (const file of walk(source)) leftBehind.push(toPosix(relative(source, file)));
-  }
-  writeConfig({ ...readConfig(), board: target });
+  const leftBehind = removeLeftovers(source);
+  if (changeDefault) writeConfig({ ...config, board: target });
   return {
     from: toPosix(source),
     to: toPosix(target),
     files: files.length,
     leftBehind,
+    defaultChanged: changeDefault,
+    defaultPath: toPosix(changeDefault ? target : resolve(config.board ?? boardInfo().path)),
     forcedLocks: options.force ? locked.map((c) => `${c.id} (lock-${c.lockedBy ?? '?'})`) : [],
   };
 }

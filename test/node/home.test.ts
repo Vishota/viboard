@@ -106,4 +106,32 @@ describe('перенос доски', () => {
     expect(() => moveBoard(from, join(from, 'inner'))).toThrow(/outside/u);
     expect(existsSync(from)).toBe(true);
   });
+
+  it('перенос доски, которая не default, не подменяет default устройства; перенос default — меняет (найдено проверяющим)', async () => {
+    const main = await board('main');
+    const other = await board('other');
+    setDefaultBoard(main);
+
+    const kept = moveBoard(other, join(root, 'other-moved'));
+    expect(kept).toMatchObject({ defaultChanged: false, defaultPath: toPosix(main) });
+    expect(toPosix(boardInfo().path)).toBe(toPosix(main));
+
+    const moved = moveBoard(main, join(root, 'main-moved'));
+    expect(moved).toMatchObject({ defaultChanged: true, defaultPath: toPosix(join(root, 'main-moved')) });
+    expect(toPosix(boardInfo().path)).toBe(moved.defaultPath);
+  });
+
+  it('текст отказа при замках не советует флаг CLI: интерфейс показывает его как есть', async () => {
+    const from = await board('from');
+    const card = createCard(from, { project: 'home', title: 'Busy', body: 'text' });
+    claim(from, card.id, 'aaaa1111');
+    let message = '';
+    try {
+      moveBoard(from, join(root, 'to'));
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    expect(message).not.toContain('--force');
+    expect(message).toContain('move anyway');
+  });
 });

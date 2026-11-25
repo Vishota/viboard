@@ -27,7 +27,8 @@ export function cmdBoard(args: Args): number {
     say(`  files: ${result.files}, verified`);
     for (const lock of result.forcedLocks) say(`  moved despite ${lock} — that agent still reads the old folder`);
     for (const file of result.leftBehind) say(`  left behind (file is open in another program): ${file}`);
-    if (!info.isDefault) say(`  default unchanged: ${toPosix(info.defaultPath)}`);
+    if (result.leftBehind.length > 0) say(`  close that program and delete the old folder yourself: ${result.from}`);
+    say(result.defaultChanged ? `  default is now the new folder` : `  default unchanged: ${result.defaultPath}`);
     return 0;
   }
   throw new Fail(`unknown «board ${sub}»\n\n${USAGE}`);

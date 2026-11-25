@@ -24,6 +24,7 @@ import { listThreads, postOwnerMessage, threadPath } from '../core/threads.js';
 import type { BoardState, Card, CardDetail, Project } from '../core/types.js';
 import { boardInfoAt, moveBoard, setDefaultBoard } from '../core/home.js';
 import { toPosix } from '../core/paths.js';
+import { clearRun, readRun, writeRun } from '../core/run.js';
 import { setRemote, syncInfo, syncInfoCached, syncNow, writeSyncSettings } from '../core/sync.js';
 
 export interface ApiContext {
@@ -131,6 +132,11 @@ export async function handleJson(
   }
   if (method === 'POST' && pathname === '/api/board/migrate') {
     const result = moveBoard(ctx.board, str(body, 'path'), { force: flag(body, 'force') });
+    const run = readRun(ctx.board);
+    if (run && run.pid === process.pid) {
+      writeRun(result.to, { ...run, board: result.to });
+      clearRun(ctx.board);
+    }
     ctx.board = result.to;
     ctx.promptContext.board = result.to;
     return result;

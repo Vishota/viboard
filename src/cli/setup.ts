@@ -3,7 +3,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { DEFAULT_COLUMNS } from '../core/board.js';
-import { boardInfo, describeBoard } from '../core/home.js';
+import { boardInfo, boardInfoAt, describeBoard } from '../core/home.js';
 import { APP } from '../core/names.js';
 import { PROTOCOL_DIR, toPosix } from '../core/paths.js';
 import { clearRun, openBrowser, probe, readRun, writeRun } from '../core/run.js';
@@ -61,11 +61,11 @@ export async function cmdInit(args: Args, thenUi: boolean): Promise<number> {
   if (result.protocol.length > 0) say(`  protocol: ${result.protocol.join(', ')}`);
   if (result.git) say('  git: repository created');
   if (linked) say('  project AGENTS.md: link to the board added');
-  if (!boardInfo().isDefault) {
-    say(`  not the default board — make it so: viboard board set ${toPosix(result.board)}`);
-  }
+  const isDefault = boardInfo(result.board).isDefault;
+  if (!isDefault) say(`  not the default board — make it so: viboard board set ${toPosix(result.board)}`);
   if (thenUi) return cmdUi(args, result.board);
-  say('next: viboard ui   →  http://127.0.0.1:8777');
+  // без аргументов откроется default: для доски в другом месте подсказываем путь
+  say(`next: viboard ui${isDefault ? '' : ` --board ${toPosix(result.board)}`}   →  http://127.0.0.1:8777`);
   return 0;
 }
 
@@ -75,7 +75,8 @@ export async function cmdUi(args: Args, knownBoard?: string): Promise<number> {
   const board = knownBoard ?? requireBoard(args);
   const open = !flag(args, 'no-open');
   heading();
-  say(`board   ${describeBoard(knownBoard === undefined ? info : boardInfo(board))}`);
+  // источник пути — как он получен на самом деле; «--board» печатался и без флага
+  say(`board   ${describeBoard(knownBoard === undefined ? info : boardInfoAt(board))}`);
 
   const running = readRun(board);
   if (running && (await probe(running))) {

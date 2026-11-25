@@ -55,7 +55,15 @@ async function move(force: boolean): Promise<void> {
   await run(api.boardMigrate(path, force), (result) => {
     closeModal(modalId);
     toast(t('Board moved to {path}', { path: result.to }), 'ok');
-    for (const file of result.leftBehind) toast(t('Left behind, open in another program: {file}', { file }));
+    if (result.leftBehind.length > 0) {
+      toast(
+        t('{count} files are left in the old folder — close the program that holds them and delete {path}', {
+          count: result.leftBehind.length,
+          path: result.from,
+        }),
+      );
+    }
+    if (!result.defaultChanged) toast(t('The default board is unchanged: {path}', { path: result.defaultPath }), 'ok');
   });
 }
 </script>

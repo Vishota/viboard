@@ -74,6 +74,9 @@ const ru: Record<string, string> = {
   'The same files changed on two devices. Nothing is lost: this device keeps its changes; they are not sent until the conflict is resolved.':
     'Одни и те же файлы изменены на двух устройствах. Ничего не потеряно: это устройство сохраняет свои изменения; они не отправляются, пока конфликт не разрешён.',
   'The conflict is still there': 'Конфликт всё ещё есть',
+  '{count} files are left in the old folder — close the program that holds them and delete {path}':
+    'В старой папке осталось файлов: {count} — закройте программу, которая их держит, и удалите {path}',
+  'The default board is unchanged: {path}': 'Доска по умолчанию не изменилась: {path}',
   Chat: 'Чат',
   'Clear filters': 'Сбросить фильтры',
   Close: 'Закрыть',

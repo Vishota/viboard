@@ -34,7 +34,6 @@ For an AI agent
 
 Start
   viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI
-  viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI
   viboard init [--here | --board <path>] [--project <name>] [--update-protocol] [--no-git]
   viboard ui [--port 8777] [--no-open] [--password <password> [--public]]
 
