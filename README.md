@@ -99,6 +99,8 @@ npm run desktop:build        # → desktop/out/viboard-desktop <version>.exe (po
 
 The build needs the Electron runtime unpacked in `desktop/cache/electron/`: download `electron-v<version>-win32-x64.zip` from the [Electron releases](https://github.com/electron/electron/releases) (the version is the `electron` devDependency) and unpack it there once. The builder does not download it by itself.
 
+The exe, the taskbar and the window carry the viboard icon (the site favicon). The icon files in `desktop/icon/` are rebuilt only when the favicon changes: `node desktop/icon/build.mjs` (needs Edge or Chrome).
+
 The build also writes `<name>.exe.sha256` next to the file. The exe is not signed: Windows shows a SmartScreen warning on the first start — that is why the release page gives the checksum.
 
 ## Development

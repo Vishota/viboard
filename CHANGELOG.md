@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The card id is visible in the interface** (138) — on the card in the column and in the open card; a click copies it.
 - **The mark «question for you»** on a card whose question is still unanswered — the accent marks where your word is needed; «answered» is neutral (057).
 
+- **The viboard icon everywhere** (150): the exe file, the taskbar and the window carry the site favicon instead of the default Electron icon.
+
 ### Fixed
 
 - Option buttons in a chat thread showed raw markup («**A.** …»); now «A. …», and that text goes as the answer (057).
