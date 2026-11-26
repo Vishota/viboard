@@ -721,3 +721,13 @@ describe('восстановление черновика (карточка 154)
     document.body.innerHTML = '';
   });
 });
+
+// Слово владельца (26.11): текст задания агента вылезал за окно. happy-dom не применяет стили к computed style,
+// поэтому проверяем сам договор в таблице стилей: текст задания переносится.
+describe('окно «Агент»: текст задания переносится', () => {
+  it('в таблице стилей у pre внутри окна есть pre-wrap и overflow-wrap', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const css = await readFile(new URL('../../ui/src/style.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.modal pre\s*\{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/u);
+  });
+});
