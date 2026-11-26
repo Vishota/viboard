@@ -13,7 +13,14 @@ export async function openDesktop(board: string): Promise<void> {
   const running = readRun(board);
   const server = running && (await probe(running)) ? null : await startServer({ board, uiDir: UI_DIR });
   if (server)
-    writeRun(board, { app: APP, port: server.port, pid: process.pid, board, startedAt: new Date().toISOString() });
+    writeRun(board, {
+      app: APP,
+      port: server.port,
+      pid: process.pid,
+      board,
+      startedAt: new Date().toISOString(),
+      control: server.control,
+    });
 
   const window = new BrowserWindow({
     width: 1280,

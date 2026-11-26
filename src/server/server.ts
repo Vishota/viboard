@@ -3,6 +3,7 @@
 // режим с паролем — вход по паролю, HttpOnly-cookie (обязателен, если доска открыта через туннель).
 
 import { basename, extname, isAbsolute, join, relative } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { Fail } from '../core/errors.js';
 import { isRealFile, readFileSyncSafe, readText } from '../core/fs.js';
@@ -10,11 +11,13 @@ import { APP } from '../core/names.js';
 import { UI_DIR } from '../core/paths.js';
 import { ATTACH_LIMIT } from '../core/ops.js';
 import { postOwnerAttachment } from '../core/threads.js';
+import { readRun, writeRun } from '../core/run.js';
 import { syncAuto } from '../core/sync.js';
 import { VERSION } from '../core/version.js';
 import { attachToCard, cardAssetPath, handleJson, threadAssetPath, type ApiContext } from './api.js';
 import { Auth } from './auth.js';
 import {
+  secretEquals,
   CSP_APP,
   CSP_SANDBOX,
   HttpError,
@@ -36,6 +39,8 @@ export interface ServerOptions {
   publicAccess?: boolean;
   /** Дополнительные Origin, которым разрешена запись (dev-сервер Vite). */
   devOrigins?: string[];
+  /** Токен управления: знает только процесс с записью «уже запущено» — по нему CLI переключает режим доступа. */
+  onControl?: (token: string) => void;
   uiDir?: string;
   /** Команда CLI, которую протокол рекомендует агентам в промптах. */
   cli?: string;
@@ -45,6 +50,7 @@ export interface Running {
   server: http.Server;
   url: string;
   port: number;
+  control: string;
   close: () => Promise<void>;
 }
 
@@ -76,13 +82,42 @@ const INLINE_TYPES: Record<string, string> = {
 };
 
 export function createBoardServer(options: ServerOptions): http.Server {
-  const publicAccess = options.publicAccess === true;
+  let publicAccess = options.publicAccess === true;
   if (publicAccess && !options.password) {
     throw new Fail('public access requires a password: --password <password> or the VIBOARD_PASSWORD variable');
   }
-  const auth = options.password ? new Auth(options.password, publicAccess) : null;
-  const limiter = publicAccess ? new RateLimiter() : null;
+  let auth = options.password ? new Auth(options.password, publicAccess) : null;
+  let limiter = publicAccess ? new RateLimiter() : null;
   const policy = { devOrigins: options.devOrigins ?? [], publicAccess };
+  // карточка 141 (UD-47): один порт. Режим доступа переключает CLI командой viboard public / viboard local —
+  // через токен управления из записи «уже запущено»; у страницы такого токена нет, её запросы идут через Origin.
+  const control = randomBytes(24).toString('hex');
+  options.onControl?.(control);
+
+  /** Сменить режим доступа. Пароль нужен всегда: включить без пароля нельзя, выключить может лишь знающий пароль. */
+  async function switchMode(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const given = req.headers.authorization ?? '';
+    if (!secretEquals(given, `Control ${control}`)) throw new HttpError(403, 'not the controlling process');
+    const body = await readJson(req);
+    const next = body.public === true;
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (password === '') throw new HttpError(400, 'a password is required');
+    if (next) {
+      auth = new Auth(password, true);
+      limiter = new RateLimiter();
+    } else {
+      auth?.login(password); // не зная пароля, публичный доступ не выключить
+      const cleared = auth?.clearCookie();
+      if (cleared !== undefined) res.setHeader('Set-Cookie', cleared);
+      auth = null;
+      limiter = null;
+    }
+    publicAccess = next;
+    policy.publicAccess = next;
+    const run = readRun(options.board);
+    if (run && run.pid === process.pid) writeRun(options.board, { ...run, publicAccess: next });
+    sendJson(res, 200, { public: next, port: port() });
+  }
   const uiDir = options.uiDir ?? UI_DIR;
   const ctx: ApiContext = {
     board: options.board,
@@ -148,6 +183,12 @@ export function createBoardServer(options: ServerOptions): http.Server {
         return sendJson(res, 200, hit);
       }
       if (method !== 'POST') throw new HttpError(405, 'method not allowed');
+
+      // команда CLI — без Origin, опознаётся токеном управления; проверка Origin её не пропустит
+      if (path === '/api/mode') {
+        await switchMode(req, res); // без await отказ улетал бы мимо catch и ронял сервер
+        return;
+      }
 
       if (!originAllowed(req.headers, policy)) throw new HttpError(403, 'request did not come from this page');
       if (limiter && !limiter.take(ip, POSTS_PER_MINUTE, 60e3)) throw new HttpError(429, 'too many requests');
@@ -297,11 +338,19 @@ export async function listenWithFallback(server: http.Server, port: number, host
 }
 
 export async function startServer(options: ServerOptions): Promise<Running> {
-  const server = createBoardServer(options);
+  let control = '';
+  const server = createBoardServer({
+    ...options,
+    onControl: (token) => {
+      control = token;
+      options.onControl?.(token);
+    },
+  });
   const port = await listenWithFallback(server, options.port ?? 8777, options.host ?? '127.0.0.1');
   return {
     server,
     port,
+    control,
     url: `http://127.0.0.1:${port}`,
     close: () =>
       new Promise((resolve) => {

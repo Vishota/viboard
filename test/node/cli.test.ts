@@ -8,6 +8,10 @@ import { PROTOCOL_DIR } from '../../src/core/paths.js';
 import { initBoard } from '../../src/core/setup.js';
 import { cmdCardAdd, cmdUnblock } from '../../src/cli/manage.js';
 import { questionsText } from '../../src/cli/agent.js';
+import { cmdAccess } from '../../src/cli/setup.js';
+import { writeRun } from '../../src/core/run.js';
+import { startServer } from '../../src/server/server.js';
+import type { Server } from 'node:http';
 import { parseArgs } from '../../src/cli/args.js';
 import { instant } from '../../src/cli/main.js';
 import { VERSION } from '../../src/core/version.js';
@@ -135,6 +139,58 @@ describe('viboard card add: ярлык agent по умолчанию', () => {
   afterAll(() => {
     if (hadBoard === undefined) delete process.env[ENV_BOARD];
     else process.env[ENV_BOARD] = hadBoard;
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+// Карточка 141 (UD-47): viboard public включает удалённый доступ на том же порту, viboard local выключает.
+describe('viboard public / local', () => {
+  const root = mkdtempSync(join(tmpdir(), 'viboard-access-'));
+  const hadBoard = process.env[ENV_BOARD];
+  const hadHome = process.env.VIBOARD_HOME;
+  const board = join(root, 'board');
+  let server: Server | undefined;
+  let port = 0;
+
+  it('на работающем локальном интерфейсе — один порт: включили (вход по паролю), выключили (снова открыто)', async () => {
+    process.env.VIBOARD_HOME = join(root, 'home');
+    await initBoard({
+      board,
+      project: { name: 'T', path: root },
+      protocolDir: PROTOCOL_DIR,
+      version: '0.1.0-test',
+      noGit: true,
+    });
+    process.env[ENV_BOARD] = board;
+    const running = await startServer({ board, port: 0, uiDir: join(root, 'ui') });
+    server = running.server;
+    port = running.port;
+    writeRun(board, {
+      app: 'viboard',
+      port,
+      pid: process.pid,
+      board,
+      startedAt: new Date().toISOString(),
+      control: running.control,
+    });
+
+    const state = async (): Promise<number> => (await fetch(`http://127.0.0.1:${port}/api/state`)).status;
+    expect(await state()).toBe(200);
+    await cmdAccess(parseArgs(['public', 'pw-1']), true);
+    expect(await state()).toBe(401);
+    await expect(cmdAccess(parseArgs(['local', 'wrong']), false)).rejects.toThrow(/wrong password/u);
+    expect(await state()).toBe(401);
+    await cmdAccess(parseArgs(['local', 'pw-1']), false);
+    expect(await state()).toBe(200);
+  });
+
+  afterAll(() => {
+    server?.closeAllConnections();
+    server?.close();
+    if (hadBoard === undefined) delete process.env[ENV_BOARD];
+    else process.env[ENV_BOARD] = hadBoard;
+    if (hadHome === undefined) delete process.env.VIBOARD_HOME;
+    else process.env.VIBOARD_HOME = hadHome;
     rmSync(root, { recursive: true, force: true });
   });
 });

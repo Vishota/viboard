@@ -380,3 +380,54 @@ describe('ответ владельца возвращает карточку в
     await app.close();
   });
 });
+
+// Карточка 141 (UD-47): один порт. Публичный доступ включается и выключается на работающем сервере
+// командой CLI — через токен управления; странице токена нет.
+describe('режим доступа на одном порту', () => {
+  const mode = (port: number, token: string | undefined, body: object): Promise<Reply> =>
+    call(port, {
+      method: 'POST',
+      path: '/api/mode',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token === undefined ? {} : { Authorization: `Control ${token}` }),
+      },
+      body: JSON.stringify(body),
+    });
+
+  it('включить и выключить может только управляющий процесс; выключить — только зная пароль', async () => {
+    let token = '';
+    const app = await boot({ onControl: (t: string) => (token = t) });
+    expect((await mode(app.port, undefined, { public: true, password: 'pw' })).status).toBe(403);
+    expect((await mode(app.port, 'not-the-token', { public: true, password: 'pw' })).status).toBe(403);
+    expect((await mode(app.port, token, { public: true, password: '' })).status).toBe(400);
+    expect((await call(app.port, { path: '/api/state' })).status).toBe(200);
+
+    expect((await mode(app.port, token, { public: true, password: 'pw' })).status).toBe(200);
+    // публично: пароль нужен всем, включая localhost; чужой Host больше не барьер — доступ защищает пароль
+    expect((await call(app.port, { path: '/api/state' })).status).toBe(401);
+    expect((await call(app.port, { headers: { Host: 'evil.example' }, path: '/api/state' })).status).toBe(401);
+    const login = await call(app.port, post(app.origin, '/api/login', { password: 'pw' }));
+    expect(login.status).toBe(200);
+    expect(login.cookie).toContain('Secure');
+    const auth = { Cookie: login.cookie ?? '' };
+    expect((await call(app.port, { path: '/api/state', headers: auth })).status).toBe(200);
+    expect((await call(app.port, post('http://evil.example', '/api/card', {}, auth))).status).toBe(403);
+
+    expect((await mode(app.port, token, { public: false, password: 'nope' })).status).toBe(401);
+    expect((await call(app.port, { path: '/api/state' })).status).toBe(401);
+    expect((await mode(app.port, token, { public: false, password: 'pw' })).status).toBe(200);
+    expect((await call(app.port, { path: '/api/state' })).status).toBe(200);
+    expect((await call(app.port, { headers: { Host: 'evil.example' }, path: '/api/state' })).status).toBe(403);
+    await app.close();
+  });
+
+  it('в публичном режиме страница без токена не выключает доступ; Origin чужой — 403', async () => {
+    let token = '';
+    const app = await boot({ onControl: (t: string) => (token = t) });
+    await mode(app.port, token, { public: true, password: 'pw' });
+    expect((await call(app.port, post(app.origin, '/api/mode', { public: false, password: 'pw' }))).status).toBe(403);
+    expect((await call(app.port, { path: '/api/state' })).status).toBe(401);
+    await app.close();
+  });
+});

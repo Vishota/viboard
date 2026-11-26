@@ -13,6 +13,10 @@ export interface RunInfo {
   pid: number;
   board: string;
   startedAt: string;
+  /** Токен управления сервером: переключение режима доступа (карточка 141). */
+  control?: string;
+  /** Публичный доступ включён: пароль нужен всем, включая localhost. */
+  publicAccess?: boolean;
 }
 
 const normalize = (p: string): string => (process.platform === 'win32' ? resolve(p).toLowerCase() : resolve(p));

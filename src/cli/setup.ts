@@ -3,6 +3,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { DEFAULT_COLUMNS } from '../core/board.js';
+import { Fail } from '../core/errors.js';
 import { boardInfo, boardInfoAt, describeBoard } from '../core/home.js';
 import { APP } from '../core/names.js';
 import { PROTOCOL_DIR, toPosix } from '../core/paths.js';
@@ -11,7 +12,7 @@ import { initBoard, projectFromDir } from '../core/setup.js';
 import { VERSION } from '../core/version.js';
 import { readText, writeAtomic } from '../core/fs.js';
 import { startServer } from '../server/server.js';
-import { flag, option, type Args } from './args.js';
+import { flag, option, parseArgs, type Args } from './args.js';
 import { requireBoard } from './context.js';
 import { say } from './io.js';
 import { cliCommand } from './manage.js';
@@ -69,6 +70,45 @@ export async function cmdInit(args: Args, thenUi: boolean): Promise<number> {
   return 0;
 }
 
+/** `viboard public <password>` и `viboard local <password>` (карточка 141, UD-47): удалённый доступ на том же порту.
+ *  Один порт вместо двух: включили — все, включая localhost, входят по паролю; выключили — снова только localhost без пароля. */
+export async function cmdAccess(args: Args, makePublic: boolean): Promise<number> {
+  const board = requireBoard(args);
+  const password = args.positional[1] ?? option(args, 'password') ?? process.env[ENV_PASSWORD] ?? '';
+  heading();
+  const found = readRun(board);
+  const running = found && (await probe(found)) ? found : null;
+  if (running === null) {
+    if (!makePublic) {
+      say('local   nothing is running — the board opens locally without a password: viboard ui');
+      return 0;
+    }
+    if (password === '') throw new Fail('a password is required: viboard public <password>');
+    return cmdUi(parseArgs(['ui', '--password', password, '--public', '--no-open']), board);
+  }
+  const command = makePublic ? 'public' : 'local';
+  if (password === '') throw new Fail(`a password is required: viboard ${command} <password>`);
+  if (running.control === undefined) {
+    throw new Fail(`the running interface was started by an older viboard — restart it first: viboard ui`);
+  }
+  const response = await fetch(`http://127.0.0.1:${running.port}/api/mode`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Control ${running.control}` },
+    body: JSON.stringify({ public: makePublic, password }),
+  });
+  const body = (await response.json()) as { error?: string };
+  if (!response.ok) throw new Fail(body.error ?? `HTTP ${response.status}`);
+  const url = `http://127.0.0.1:${running.port}`;
+  if (makePublic) {
+    say(`access  public — ${url}: everyone signs in, you too on this machine`);
+    say('tunnel   point it at this port; the Host header does not matter');
+    say('off      viboard local <password>');
+  } else {
+    say(`access  local — ${url}: localhost only, no password`);
+  }
+  return 0;
+}
+
 /** `viboard ui`: локальный интерфейс. Уже запущено — просто открывает браузер; иначе сервер живёт до Ctrl+C. */
 export async function cmdUi(args: Args, knownBoard?: string): Promise<number> {
   const info = boardInfo(option(args, 'board'));
@@ -82,7 +122,9 @@ export async function cmdUi(args: Args, knownBoard?: string): Promise<number> {
   if (running && (await probe(running))) {
     const url = `http://127.0.0.1:${running.port}`;
     if (open) openBrowser(url);
-    say(`ui      ${url} — already running${open ? ', opened in the browser' : ''}`);
+    say(
+      `ui      ${url} — already running${running.publicAccess ? ' (public access: password required)' : ''}${open ? ', opened in the browser' : ''}`,
+    );
     return 0;
   }
 
@@ -103,6 +145,8 @@ export async function cmdUi(args: Args, knownBoard?: string): Promise<number> {
     pid: process.pid,
     board,
     startedAt: new Date().toISOString(),
+    control: server.control,
+    publicAccess: publicAccess,
   });
   process.on('exit', () => clearRun(board));
 

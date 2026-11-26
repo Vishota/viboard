@@ -19,7 +19,7 @@ import {
 } from './agent.js';
 import { Fail } from '../core/errors.js';
 import { cmdCardAdd, cmdCheck, cmdFix, cmdLog, cmdMv, cmdPrompt, cmdShell, cmdStamp, cmdUnblock } from './manage.js';
-import { cmdInit, cmdUi } from './setup.js';
+import { cmdAccess, cmdInit, cmdUi } from './setup.js';
 import { say, sayError } from './io.js';
 
 const USAGE = `viboard ${VERSION} — file-based task board: Trello for the owner, ls and cat for an agent
@@ -37,6 +37,8 @@ Start
   viboard                              the default board (the user folder, not the working directory): creates it if needed and opens the UI
   viboard init [--here | --board <path>] [--project <name>] [--update-protocol] [--no-git]
   viboard ui [--port 8777] [--no-open] [--password <password> [--public]]
+  viboard public <password>              remote access on the same port: everyone signs in, you too (a tunnel points at it)
+  viboard local <password>               back to localhost only, without a password
 
 Agent   (board: --board <path> → $VIBOARD_BOARD → the default folder, see «Board folder»; tag: --session or $VIBOARD_SESSION)
   viboard session                          new session tag
@@ -74,6 +76,8 @@ type Handler = (args: Args) => number | Promise<number>;
 const COMMANDS: Record<string, Handler> = {
   init: (args) => cmdInit(args, false),
   ui: (args) => cmdUi(args),
+  public: (args) => cmdAccess(args, true),
+  local: (args) => cmdAccess(args, false),
   board: cmdBoard,
   session: cmdSession,
   ls: cmdLs,

@@ -65,10 +65,15 @@ board/
 
 By default the interface is reachable from this machine only. To expose the board through a tunnel (for example, [virunx](https://www.npmjs.com/package/virunx)):
 
+The board keeps one port. While the local interface is running:
+
 ```sh
-viboard ui --password <password> --public      # in one terminal
-npx virunx -p 8777 -s <name>                   # in another
+viboard public <password>       # the same port is now public: everyone signs in, you too
+npx virunx -p 8777 -s <name>    # point the tunnel at it
+viboard local <password>        # back to localhost only, without a password
 ```
+
+Without a running interface `viboard public <password>` starts one in public mode (the same as `viboard ui --password <password> --public`). Turning public access off requires the password, so an outsider cannot do it.
 
 Public mode is impossible without a password. One sign-in, the session lives for 12 hours in an HttpOnly cookie, sign-in attempts are limited.
 
