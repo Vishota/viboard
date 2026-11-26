@@ -1271,3 +1271,85 @@ a {
   padding: 0 14px 4px;
   text-align: right;
 }
+
+/* Удалённый доступ (UD-55) */
+.access-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 4px 0 14px;
+}
+
+.access-tabs button {
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.access-tabs button.on {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.access-warning {
+  border-left: 2px solid var(--acc);
+  padding-left: 10px;
+}
+
+.access-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  margin: 12px 0;
+}
+
+.qr {
+  flex: none;
+  width: 168px;
+  height: 168px;
+  border-radius: 8px;
+}
+
+.access-share-text {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.access-code {
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.access-url {
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.access-device {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.access-device > :first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

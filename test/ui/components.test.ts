@@ -1,17 +1,21 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import type { BoardState, CardSummary, Message, Thread } from '../../src/core/types.js';
+import type { AccessState, BoardState, CardSummary, Message, Thread } from '../../src/core/types.js';
+import AccessModal from '../../ui/src/components/AccessModal.vue';
 import App from '../../ui/src/App.vue';
+import AuthGate from '../../ui/src/components/AuthGate.vue';
 import BoardColumn from '../../ui/src/components/BoardColumn.vue';
+import PairGate from '../../ui/src/components/PairGate.vue';
 import CardModal from '../../ui/src/components/CardModal.vue';
 import ChatPanel from '../../ui/src/components/ChatPanel.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import SyncPanel from '../../ui/src/components/SyncPanel.vue';
 import ThreadView from '../../ui/src/components/ThreadView.vue';
-import { modals, toasts } from '../../ui/src/modal';
+import { MODAL_ID, modals, toasts } from '../../ui/src/modal';
 import {
   activeThread,
+  authKind,
   bodyHits,
   cardMatches,
   filterActive,
@@ -718,6 +722,129 @@ describe('восстановление черновика (карточка 154)
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/chat')).toBe(true);
     expect(saved()).toBeNull();
     second.unmount();
+    document.body.innerHTML = '';
+  });
+});
+
+describe('удалённый доступ (UD-55)', () => {
+  const accessState = (extra: Partial<AccessState>): AccessState => ({
+    tool: { state: 'ready', source: 'bundled' },
+    toolVersion: '0.5.0',
+    on: false,
+    url: null,
+    key: null,
+    devices: [],
+    error: null,
+    ...extra,
+  });
+  const stubAccess = (state: AccessState): Mock<(url: string, init?: RequestInit) => Promise<object>> => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit): Promise<object> =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(url.startsWith('/api/access') ? state : board()),
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  const ACCESS_MOUNT = { attachTo: document.body, global: { provide: { [MODAL_ID]: 1 } } };
+
+  afterEach(() => {
+    window.history.replaceState(null, '/', '/');
+    localStorage.clear();
+  });
+
+  it('инструмент не установлен — предложение поставить; установлен — «Дать доступ»', async () => {
+    stubAccess(accessState({ tool: { state: 'missing', source: null } }));
+    const missing = mount(AccessModal, ACCESS_MOUNT);
+    await flushPromises();
+    expect(missing.text()).toContain('virunx 0.5.0');
+    expect(missing.findAll('button').some((b) => b.text() === 'Install')).toBe(true);
+    missing.unmount();
+    document.body.innerHTML = '';
+
+    stubAccess(accessState({}));
+    const ready = mount(AccessModal, ACCESS_MOUNT);
+    await flushPromises();
+    expect(ready.text()).toContain('Do not share a board with secrets');
+    expect(ready.findAll('button').some((b) => b.text() === 'Share access')).toBe(true);
+    ready.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('доступ открыт: QR, код «имя/ключ», обратный отсчёт, устройства; «Закрыть доступ» идёт на сервер', async () => {
+    const open = accessState({
+      on: true,
+      url: 'https://viboard-ab12.run.vishota.com',
+      key: { value: 'k7m2q9', expiresAt: Date.now() + 90e3 },
+      devices: [
+        { id: 'd1', name: 'iPhone · Safari', createdAt: '2026-11-26T10:00:00Z', lastSeenAt: '2026-11-26T10:05:00Z' },
+      ],
+    });
+    const fetchMock = stubAccess(open);
+    const wrapper = mount(AccessModal, ACCESS_MOUNT);
+    await flushPromises();
+    expect(wrapper.find('svg.qr').exists()).toBe(true);
+    expect(wrapper.find('.access-code').text()).toBe('viboard-ab12/k7m2q9');
+    expect(wrapper.text()).toContain('iPhone · Safari');
+    expect(wrapper.text()).toContain('The key expires in');
+    const stop = wrapper.findAll('button').find((b) => b.text() === 'Stop sharing');
+    void stop?.trigger('click');
+    await flushPromises();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/access/close')).toBe(true);
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('«Подключиться»: код «имя/ключ» открывает ссылку и запоминает устройство; неверный ввод — подсказка', async () => {
+    const opened: string[] = [];
+    const openSpy = vi.spyOn(window, 'open').mockImplementation((url: string | URL | undefined) => {
+      opened.push(String(url));
+      return null;
+    });
+    stubAccess(accessState({}));
+    const wrapper = mount(AccessModal, ACCESS_MOUNT);
+    await flushPromises();
+    await wrapper.findAll('[role=tab]')[1]?.trigger('click');
+    await wrapper.find('input[name=access-code]').setValue('VIBOARD-AB12/K7M2Q9');
+    await wrapper.find('form').trigger('submit');
+    expect(opened).toEqual(['https://viboard-ab12.run.vishota.com/?pair=k7m2q9']);
+    expect(wrapper.text()).toContain('Saved devices');
+    expect(localStorage.getItem('viboard.remoteDevices')).toContain('https://viboard-ab12.run.vishota.com');
+    await wrapper.find('input[name=access-code]').setValue('просто текст');
+    await wrapper.find('form').trigger('submit');
+    expect(wrapper.text()).toContain('Enter the code as «name/key» or paste the link');
+    openSpy.mockRestore();
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('доска другого устройства без сессии — поле ключа вместо пароля; ключ из ссылки уходит сам', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit): Promise<object> => {
+        if (url === '/api/state')
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            text: () => Promise.resolve('{"error":"device access required","auth":"device"}'),
+          });
+        calls.push(`${String(init?.method)} ${url} ${typeof init?.body === 'string' ? init.body : ''}`);
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
+      }),
+    );
+    window.history.replaceState(null, '/', '/?pair=k7m2q9');
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    await flushPromises();
+    expect(authKind.value).toBe('device');
+    expect(wrapper.findComponent(PairGate).exists()).toBe(true);
+    expect(wrapper.findComponent(AuthGate).exists()).toBe(false);
+    expect(calls).toEqual(['POST /api/pair {"key":"k7m2q9"}']);
+    wrapper.unmount();
     document.body.innerHTML = '';
   });
 });

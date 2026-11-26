@@ -6,6 +6,7 @@ const syncAlert = computed<'conflict' | 'error' | null>(() => {
 });
 </script>
 <script setup lang="ts">
+import AccessModal from './AccessModal.vue';
 import AgentModal from './AgentModal.vue';
 import { computed } from 'vue';
 import BoardModal from './BoardModal.vue';
@@ -52,6 +53,8 @@ import { t } from '../i18n';
         {{ syncAlert === 'conflict' ? t('Sync conflict') : t('Sync failed') }}
       </button>
       <button type="button" class="btn-sec" @click="openModal(BoardModal)">{{ t('Board') }}</button>
+      <!-- UD-55: удалённый доступ — дать или подключиться -->
+      <button type="button" class="btn-sec" @click="openModal(AccessModal)">{{ t('Remote access') }}</button>
       <button type="button" class="btn-sec" @click="chatOpen = !chatOpen">
         <span>{{ t('Chat') }}</span>
         <span v-if="unreadCount > 0 && !chatOpen" class="badge">{{ unreadCount }}</span>

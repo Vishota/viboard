@@ -1,4 +1,5 @@
 import type {
+  AccessState,
   BoardState,
   CardDetail,
   CardPatch,
@@ -76,6 +77,13 @@ export const api = {
     upload(`/api/chat-attach?${query({ q: thread, name })}`, file),
   login: (password: string): Promise<{ ok: true }> => post('/api/login', { password }),
   boardDefault: (): Promise<unknown> => post('/api/board/default'),
+  /** Удалённый доступ (UD-55): состояние — без записи, остальное — действия владельца на этом устройстве. */
+  access: (): Promise<AccessState> => get('/api/access'),
+  accessInstall: (): Promise<AccessState> => post('/api/access/install'),
+  accessOpen: (): Promise<AccessState> => post('/api/access/open'),
+  accessKey: (): Promise<AccessState> => post('/api/access/key'),
+  accessClose: (): Promise<AccessState> => post('/api/access/close'),
+  accessRevoke: (id: string): Promise<AccessState> => post('/api/access/revoke', { id }),
   /** Карточка 049: подключить remote, переключить автосинхронизацию или синхронизировать сейчас. */
   sync: (body: { remote?: string; autoPull?: boolean; autoPush?: boolean; action?: 'now' } = {}): Promise<SyncInfo> =>
     post('/api/sync', body),

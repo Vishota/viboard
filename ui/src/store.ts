@@ -4,8 +4,9 @@ import type { BoardState, CardSummary } from '@core/types';
 /** Состояние доски — проекция файловой системы с сервера; обновляется опросом и после каждого действия. */
 export const state = shallowRef<BoardState | null>(null);
 export const connection = ref<'connecting' | 'online' | 'offline'>('connecting');
-/** Сервер требует вход по паролю. */
+/** Сервер требует вход: пароль владельца — или (UD-55) подключение устройства по ключу с его экрана. */
 export const locked = ref(false);
+export const authKind = ref<'password' | 'device'>('password');
 export const chatOpen = ref(false);
 /** Открытый тред чата (dir); null — список. Переживает закрытие панели и попадает в адрес (карточка 072). */
 export const activeThread = ref<string | null>(null);
@@ -19,12 +20,16 @@ export async function refresh(): Promise<void> {
     const response = await fetch('/api/state', { headers: { Accept: 'application/json' } });
     if (response.status === 401) {
       locked.value = true;
+      // доска другого устройства отвечает, что нужна сессия устройства, а не пароль
+      const body = await response.text().catch(() => '');
+      authKind.value = /"auth"\s*:\s*"device"/u.test(body) ? 'device' : 'password';
       connection.value = 'online';
       return;
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const text = await response.text();
     locked.value = false;
+    authKind.value = 'password';
     connection.value = 'online';
     if (text === snapshot) return; // ничего не изменилось — реактивность не будим
     snapshot = text;

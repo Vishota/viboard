@@ -1,7 +1,8 @@
 // Карточка 072: что открыто — видно в адресе, и ссылка открывает то же самое.
-// ?card=<имя> · ?thread=<тред>&chat=1 · ?agent · ?board · ?help · ?task — стек окон по порядку.
+// ?card=<имя> · ?thread=<тред>&chat=1 · ?agent · ?access · ?board · ?help · ?task — стек окон по порядку.
 
 import { watch } from 'vue';
+import AccessModal from './components/AccessModal.vue';
 import AgentModal from './components/AgentModal.vue';
 import BoardModal from './components/BoardModal.vue';
 import CardModal from './components/CardModal.vue';
@@ -21,6 +22,7 @@ interface Opening {
 /** Порядок восстановления: так же, как их открывали бы рукой. */
 const OPENINGS: readonly Opening[] = [
   { key: 'agent', component: AgentModal },
+  { key: 'access', component: AccessModal },
   { key: 'board', component: BoardModal },
   { key: 'help', component: HelpModal },
   { key: 'task', component: TaskModal },
@@ -28,6 +30,8 @@ const OPENINGS: readonly Opening[] = [
 ];
 
 const find = (component: Component): Opening | undefined => OPENINGS.find((o) => o.component === component);
+/** Ключи адреса, которыми распоряжается интерфейс; прочие он не трогает. */
+const OWNED: readonly string[] = [...OPENINGS.map((o) => o.key), 'chat', 'thread'];
 
 /** Адрес по текущему состоянию: окна в порядке стека, затем чат. */
 export function queryNow(): URLSearchParams {
@@ -61,7 +65,11 @@ export function restoreFromUrl(): void {
 /** Адрес меняется вместе с окнами и чатом (без записей в истории: Back не листает окна). */
 export function startUrlSync(): void {
   const write = (): void => {
-    const query = queryNow().toString();
+    // чужие параметры (например, ?pair — ключ подключения устройства, UD-55) остаются в адресе
+    const params = new URLSearchParams(window.location.search);
+    for (const key of OWNED) params.delete(key);
+    for (const [key, value] of queryNow()) params.set(key, value);
+    const query = params.toString();
     const url = query === '' ? window.location.pathname : `${window.location.pathname}?${query}`;
     if (`${window.location.pathname}${window.location.search}` !== url) window.history.replaceState(null, '', url);
   };

@@ -9,8 +9,9 @@ import HelpModal from './components/HelpModal.vue';
 import { openModal } from './modal';
 import { t } from './i18n';
 import ModalHost from './components/ModalHost.vue';
+import PairGate from './components/PairGate.vue';
 import ToastHost from './components/ToastHost.vue';
-import { connection, locked, startPolling, state } from './store';
+import { authKind, connection, locked, startPolling, state } from './store';
 import { restoreFromUrl, startUrlSync } from './url';
 
 // первый вход: один раз показать, что это и с чего начать (карточка 048)
@@ -43,6 +44,7 @@ onMounted(() => {
     <FilterBar v-if="state" />
     <main class="app-main">
       <BoardView v-if="state" />
+      <PairGate v-else-if="locked && authKind === 'device'" />
       <AuthGate v-else-if="locked" />
       <p v-else-if="connection === 'offline'" class="app-status">{{ t('No connection to the board server') }}</p>
       <p v-else class="app-status">{{ t('Loading…') }}</p>
