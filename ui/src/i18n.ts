@@ -94,8 +94,8 @@ const ru: Record<string, string> = {
   'Remote access': 'Удалённый доступ',
   'Share access with another device': 'Дать доступ с другого устройства',
   'Connect to another device': 'Подключиться к другому устройству',
-  'The tunnel tool is not installed yet: virunx {version}, a small package from npm. It is put into the viboard settings folder and started only when you share access.':
-    'Инструмент туннеля ещё не установлен: virunx {version}, небольшой пакет из npm. Он кладётся в папку настроек viboard и запускается, только когда вы даёте доступ.',
+  'The tunnel tool for this viboard version is not installed yet: virunx {version}, a small package from npm. It is put into the viboard settings folder and started only when you share access.':
+    'Инструмент туннеля для этой версии viboard ещё не установлен: virunx {version}, небольшой пакет из npm. Он кладётся в папку настроек viboard и запускается, только когда вы даёте доступ.',
   'Traffic: visitors connect to this computer directly when the network allows; otherwise everything goes through the virunx relay (run.vishota.com) in plain form. Do not share a board with secrets.':
     'Трафик: посетители подключаются к этому компьютеру напрямую, когда сеть позволяет; иначе всё идёт через relay virunx (run.vishota.com) в открытом виде. Не открывайте доску с секретами.',
   'Open the board from a phone or another computer: the link appears here, with a QR code and a one-time key.':

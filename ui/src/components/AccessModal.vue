@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
       <p v-if="state && state.tool.state === 'missing'" class="board-hint">
         {{
           t(
-            'The tunnel tool is not installed yet: virunx {version}, a small package from npm. It is put into the viboard settings folder and started only when you share access.',
+            'The tunnel tool for this viboard version is not installed yet: virunx {version}, a small package from npm. It is put into the viboard settings folder and started only when you share access.',
             { version: state.toolVersion },
           )
         }}

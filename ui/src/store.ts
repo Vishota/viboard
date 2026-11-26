@@ -20,6 +20,9 @@ export async function refresh(): Promise<void> {
     const response = await fetch('/api/state', { headers: { Accept: 'application/json' } });
     if (response.status === 401) {
       locked.value = true;
+      // доступа больше нет (устройство отозвали, сессия кончилась) — доска уходит с экрана, а не застывает
+      state.value = null;
+      snapshot = '';
       // доска другого устройства отвечает, что нужна сессия устройства, а не пароль
       const body = await response.text().catch(() => '');
       authKind.value = /"auth"\s*:\s*"device"/u.test(body) ? 'device' : 'password';
@@ -48,6 +51,7 @@ export function startPolling(): void {
 export function stopPolling(): void {
   if (timer !== undefined) clearInterval(timer);
   timer = undefined;
+  snapshot = ''; // остановились — кэш ничего не держит
 }
 
 /** Прочитать доску сразу после действия — не дожидаясь опроса. */

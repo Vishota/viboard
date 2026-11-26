@@ -4,6 +4,7 @@ import type { AccessState, BoardState, CardSummary, Message, Thread } from '../.
 import AccessModal from '../../ui/src/components/AccessModal.vue';
 import App from '../../ui/src/App.vue';
 import AuthGate from '../../ui/src/components/AuthGate.vue';
+import HelpModal from '../../ui/src/components/HelpModal.vue';
 import BoardColumn from '../../ui/src/components/BoardColumn.vue';
 import PairGate from '../../ui/src/components/PairGate.vue';
 import CardModal from '../../ui/src/components/CardModal.vue';
@@ -22,8 +23,10 @@ import {
   filters,
   resetFilters,
   chatOpen,
+  locked,
   state,
   stopPolling,
+  sync,
 } from '../../ui/src/store';
 import { locale, setLocale, t } from '../../ui/src/i18n';
 
@@ -118,6 +121,8 @@ afterEach(() => {
   stopPolling();
   vi.unstubAllGlobals();
   state.value = null;
+  locked.value = false; // без доступа не показываются окна доски — состояние не переживает тест
+  authKind.value = 'password';
   chatOpen.value = false;
   activeThread.value = null;
   modals.splice(0);
@@ -410,7 +415,8 @@ describe('локализация интерфейса (карточка 048)', (
     expect(document.documentElement.lang).toBe('ru');
     setLocale('en');
     expect(document.documentElement.lang).toBe('en');
-    state.value = { ...board(), board: { ...board().board, isDefault: false, defaultPath: 'C:/boards/other' } };
+    // сервер — заглушка с нужным состоянием: без неё тест ходил в сеть и зависел от того, что осталось от прошлых тестов
+    stubServer(() => ({ ...board(), board: { ...board().board, isDefault: false, defaultPath: 'C:/boards/other' } }));
     const wrapper = mount(App, { attachTo: document.body });
     await flushPromises();
     await flushPromises();
@@ -823,19 +829,23 @@ describe('удалённый доступ (UD-55)', () => {
 
   it('доска другого устройства без сессии — поле ключа вместо пароля; ключ из ссылки уходит сам', async () => {
     const calls: string[] = [];
+    let paired = false;
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string, init?: RequestInit): Promise<object> => {
         if (url === '/api/state')
-          return Promise.resolve({
-            ok: false,
-            status: 401,
-            text: () => Promise.resolve('{"error":"device access required","auth":"device"}'),
-          });
+          return paired
+            ? Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(board())) })
+            : Promise.resolve({
+                ok: false,
+                status: 401,
+                text: () => Promise.resolve('{"error":"device access required","auth":"device"}'),
+              });
         calls.push(`${String(init?.method)} ${url} ${typeof init?.body === 'string' ? init.body : ''}`);
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
       }),
     );
+    localStorage.removeItem('viboard.onboarded'); // справка первого входа ещё не показана
     window.history.replaceState(null, '/', '/?pair=k7m2q9');
     const wrapper = mount(App, { attachTo: document.body });
     await flushPromises();
@@ -843,7 +853,42 @@ describe('удалённый доступ (UD-55)', () => {
     expect(authKind.value).toBe('device');
     expect(wrapper.findComponent(PairGate).exists()).toBe(true);
     expect(wrapper.findComponent(AuthGate).exists()).toBe(false);
+    // найдено вживую: справка первого входа закрывала поле ключа — она ждёт первой видимой доски
+    expect(wrapper.findComponent(HelpModal).exists()).toBe(false);
     expect(calls).toEqual(['POST /api/pair {"key":"k7m2q9"}']);
+    // устройство подключилось: доска видна — теперь и справка
+    paired = true;
+    await sync();
+    await flushPromises();
+    expect(wrapper.findComponent(BoardView).exists()).toBe(true);
+    expect(wrapper.findComponent(HelpModal).exists()).toBe(true);
+    wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+
+  it('устройство отозвали: доска уходит с экрана при следующем опросе — вместо неё поле ключа (найдено вживую)', async () => {
+    let revoked = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string): Promise<object> =>
+        revoked
+          ? Promise.resolve({ ok: false, status: 401, text: () => Promise.resolve('{"auth":"device"}') })
+          : Promise.resolve({
+              ok: true,
+              status: 200,
+              text: () => Promise.resolve(JSON.stringify(board([card()]))),
+            }),
+      ),
+    );
+    const wrapper = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(wrapper.findComponent(BoardView).exists()).toBe(true);
+    revoked = true;
+    await sync();
+    await flushPromises();
+    expect(wrapper.findComponent(BoardView).exists()).toBe(false);
+    expect(wrapper.findComponent(PairGate).exists()).toBe(true);
+    expect(wrapper.text()).not.toContain(card().title);
     wrapper.unmount();
     document.body.innerHTML = '';
   });

@@ -22,10 +22,8 @@ async function pair(value: string): Promise<void> {
       location.replace(location.pathname);
       return;
     }
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
     error.value =
       response.status === 429 ? t('Too many attempts — wait a minute') : t('The key is wrong or already used');
-    void body.error;
   } catch {
     error.value = t('No connection to the board server');
   } finally {
@@ -40,7 +38,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="gate">
+  <div class="gate">
     <section class="gate-card">
       <h2>{{ t('Board of another device') }}</h2>
       <p>
@@ -64,5 +62,5 @@ onMounted(() => {
       </form>
       <p v-if="error !== ''" class="form-error">{{ error }}</p>
     </section>
-  </main>
+  </div>
 </template>
