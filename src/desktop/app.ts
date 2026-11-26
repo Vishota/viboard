@@ -3,9 +3,13 @@
 
 import { BrowserWindow, shell } from 'electron';
 import { APP } from '../core/names.js';
-import { UI_DIR } from '../core/paths.js';
+import { join } from 'node:path';
+import { ROOT, UI_DIR } from '../core/paths.js';
 import { clearRun, probe, readRun, writeRun } from '../core/run.js';
 import { startServer } from '../server/server.js';
+
+/** Значок окна: desktop/icon/icon.png, кладётся в корень пакета при сборке exe (карточка 150). */
+const icon = join(ROOT, 'icon.png');
 
 /** Открыть доску в окне; окно закрывается — приложение выходит. */
 export async function openDesktop(board: string): Promise<void> {
@@ -26,7 +30,8 @@ export async function openDesktop(board: string): Promise<void> {
     width: 1280,
     height: 800,
     title: 'viboard',
-    backgroundColor: '#111111',
+    // карточка 150: значок viboard — как favicon сайта; в окне, в панели задач и в строке заголовка
+    ...(icon === null ? {} : { icon }),
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
   });
   // Ссылка на GitHub и прочие внешние адреса — в браузер системы, не в новое окно приложения.

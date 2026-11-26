@@ -19,6 +19,8 @@ await mkdir(app, { recursive: true });
 // Внутри exe пакет лежит целиком: ownPackage() ищет package.json с именем viboard вверх от dist — он его находит.
 await writeFile(join(app, 'package.json'), JSON.stringify({ name: pkg.name, version: pkg.version, type: pkg.type }));
 for (const dir of ['dist', 'protocol']) await cp(join(root, dir), join(app, dir), { recursive: true });
+// значок окна и панели задач лежит в корне пакета: окно берёт его по ROOT (карточка 150)
+await cp(join(root, 'desktop', 'icon', 'icon.png'), join(app, 'icon.png'));
 
 await writeFile(
   join(stage, 'package.json'),
@@ -45,6 +47,7 @@ const result = spawnSync(
     stage,
     `--config.electronDist=${electronDist}`,
     `--config.directories.output=${join(root, 'desktop', 'out')}`,
+    `--config.win.icon=${join(root, 'desktop', 'icon', 'icon.ico')}`,
     ...(args.length > 0 ? args : ['--win', 'portable']),
   ],
   { stdio: 'inherit', cwd: root },

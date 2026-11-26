@@ -21,6 +21,9 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on('window-all-closed', () => void app.quit());
   void app.whenReady().then(async () => {
+    // карточка 150: portable-запуску нужен явный идентификатор — иначе панель задач показывает значок
+    // не нашего окна, а загрузчика
+    app.setAppUserModelId(process.execPath);
     Menu.setApplicationMenu(null); // без строки меню File / Edit / View / Window
     try {
       await openDesktop(await prepareDesktopBoard());
