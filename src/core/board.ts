@@ -196,6 +196,9 @@ export function oneCard(board: string, ref: string): Card {
   );
 }
 
+/** Владелец ответил на вопрос агента: в логе карточки есть запись answer (карточка 057, UD-45). */
+export const isAnswered = (c: Card): boolean => c.log.some((file) => file.endsWith('-answer.md'));
+
 export const summaryOf = (c: Card): CardSummary => ({
   name: c.name,
   id: c.id,
@@ -208,6 +211,7 @@ export const summaryOf = (c: Card): CardSummary => ({
   lockedAt: c.lockedAt,
   assets: c.assets.length,
   log: c.log.length,
+  answered: isAnswered(c),
 });
 
 export const readCardDoc = (card: Card): Doc => parseDoc(readText(join(card.dir, 'README.md')) ?? '');

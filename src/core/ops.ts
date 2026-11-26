@@ -311,6 +311,26 @@ const logged = (board: string, card: Card, entry: LogInput): Card => {
   return readCard(board, card.column, card.name);
 };
 
+/** Карточка 057 (UD-45): владелец ответил в ветке — карточка возвращается из blocked/ в todo/, замок снимается,
+ *  в лог пишется запись answer. Ответ читает та сессия, что возьмёт карточку следующей. Не в blocked/ — ничего не делает. */
+export function answerReceived(board: string, ref: string, threadDir: string, options: StepOptions = {}): Card | null {
+  const card = oneCard(board, ref);
+  if (card.column !== 'blocked') return null;
+  for (const entry of readdirSync(card.dir)) {
+    if ([LOCK, LEGACY_LOCK].some((prefix) => entry.startsWith(prefix))) {
+      rmSync(join(card.dir, entry), { recursive: true, force: true });
+    }
+  }
+  const moved = moveTo(board, readCard(board, card.column, card.name), 'todo');
+  return logged(board, moved, {
+    type: 'answer',
+    session: OWNER,
+    asOwner: true,
+    now: options.now,
+    text: `answer received: questions/${threadDir} — read answer.md (viboard show ${card.id})`,
+  });
+}
+
 /** Заметка в log/ карточки. Возвращает имя файла. */
 export interface StepOptions {
   /** Момент операции; по умолчанию — сейчас. */

@@ -2,7 +2,7 @@
 // Каждая команда оставляет доску целостной: лок, запись, колонка — вместе или ничего.
 
 import { join } from 'node:path';
-import { listCards, oneCard, readColumns, readEntries } from '../core/board.js';
+import { isAnswered, listCards, oneCard, readColumns, readEntries } from '../core/board.js';
 import { Fail } from '../core/errors.js';
 import { readText } from '../core/fs.js';
 import { newSessionTag } from '../core/names.js';
@@ -36,8 +36,9 @@ export function cmdLs(args: Args): number {
     const here = cards.filter((c) => c.column === column);
     say(`${column} (${here.length})`);
     for (const c of here) {
-      const lock = c.lockedBy ? `lock-${c.lockedBy}  ` : '';
-      say(`  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${c.title}`);
+      const lock = c.lockedBy ? `lock-${c.lockedBy}  ` : ''; // answered — ответ владельца получен (карточка 057)
+      const answered = isAnswered(c) ? 'answered  ' : '';
+      say(`  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${answered}${c.title}`);
     }
   }
   return 0;

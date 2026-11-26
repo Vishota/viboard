@@ -12,6 +12,7 @@ import { ATT_RE } from '../core/names.js';
 import {
   addColumn,
   addProject,
+  answerReceived,
   createCard,
   deleteCard,
   deleteColumn,
@@ -193,8 +194,14 @@ export async function handleJson(
           path: str(body, 'path'),
         }),
       };
-    case '/api/chat':
-      return { file: postOwnerMessage(board, str(body, 'q'), str(body, 'text')) };
+    case '/api/chat': {
+      const dir = str(body, 'q');
+      const file = postOwnerMessage(board, dir, str(body, 'text'));
+      // карточка 057 (UD-45): ответ по карточке в blocked/ возвращает её в todo/ с записью answer
+      const thread = listThreads(board).find((item) => item.dir === dir);
+      if (thread && thread.card !== '') answerReceived(board, thread.card, dir);
+      return { file };
+    }
     default:
       return null;
   }

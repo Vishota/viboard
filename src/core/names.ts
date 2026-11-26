@@ -7,7 +7,7 @@ import { readdirSync } from 'node:fs';
 export const APP = 'viboard';
 export type { Verdict } from './types.js';
 
-export const LOG_KINDS = ['note', 'decision', 'question', 'blocked', 'review', 'done'] as const;
+export const LOG_KINDS = ['note', 'decision', 'question', 'blocked', 'answer', 'review', 'done'] as const;
 export const THREAD_KINDS = ['q', 'msg', 'att'] as const;
 export type LogKind = (typeof LOG_KINDS)[number];
 export type ThreadKind = (typeof THREAD_KINDS)[number];

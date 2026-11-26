@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { listCards, oneCard } from '../../src/core/board.js';
+import { listCards, oneCard, summaryOf } from '../../src/core/board.js';
 import { Fail } from '../../src/core/errors.js';
 import { PROTOCOL_DIR } from '../../src/core/paths.js';
-import { claim } from '../../src/core/ops.js';
+import { ask, claim, createCard } from '../../src/core/ops.js';
 import { initBoard } from '../../src/core/setup.js';
 import type { BoardState, CardDetail } from '../../src/core/types.js';
 import { createBoardServer, listenWithFallback, type ServerOptions } from '../../src/server/server.js';
@@ -335,6 +335,48 @@ describe('поиск по тексту (карточка 044)', () => {
     expect(await names('depends_on')).toEqual([]);
     expect(await names('created')).toEqual([]);
     expect((await call(app.port, { path: '/api/search' })).status).toBe(200);
+    await app.close();
+  });
+});
+
+// Карточка 057 (UD-45): ответ владельца в чате возвращает карточку из blocked/ в todo/, снимает замок,
+// ставит запись answer — карточку может взять следующая свободная сессия.
+describe('ответ владельца возвращает карточку в todo', () => {
+  it('первый ответ: todo/, без замка, запись owner-answer, пометка answered; повтор — ничего не меняет', async () => {
+    const app = await boot();
+    const card = createCard(app.board, { project: 'test', title: 'Asked', body: 'text' });
+    claim(app.board, card.id, 'aaaa1111');
+    const { card: blocked, thread } = ask(app.board, card.id, 'aaaa1111', 'A or B?');
+    expect(blocked.column).toBe('blocked');
+
+    const answered = await call(app.port, post(app.origin, '/api/chat', { q: thread, text: 'A.' }));
+    expect(JSON.parse(answered.body)).toEqual({ file: 'answer.md' });
+
+    const after = oneCard(app.board, card.id);
+    expect(after.column).toBe('todo');
+    expect(after.lockedBy).toBeNull();
+    expect(after.log.filter((f) => f.endsWith('-answer.md'))).toHaveLength(1);
+    expect(after.log.find((f) => f.endsWith('-answer.md'))).toContain('-owner-');
+    expect(summaryOf(oneCard(app.board, card.id)).answered).toBe(true);
+
+    const again = await call(app.port, post(app.origin, '/api/chat', { q: thread, text: 'And one more thing.' }));
+    expect(again.status).toBe(200);
+    expect(oneCard(app.board, card.id).column).toBe('todo');
+    expect(oneCard(app.board, card.id).log.filter((f) => f.endsWith('-answer.md'))).toHaveLength(1);
+    await app.close();
+  });
+
+  it('ответ в общей ветке (без карточки) ничего не двигает', async () => {
+    const app = await boot();
+    const card = createCard(app.board, { project: 'test', title: 'Untouched', body: 'text' });
+    claim(app.board, card.id, 'aaaa1111');
+    mkdirSync(join(app.board, 'questions', '2026-11-26T100000Z-aaaa1111-q'), { recursive: true });
+    writeFileSync(
+      join(app.board, 'questions', '2026-11-26T100000Z-aaaa1111-q', 'README.md'),
+      '---\nfrom: aaaa1111\n---\n\nA general question.',
+    );
+    await call(app.port, post(app.origin, '/api/chat', { q: '2026-11-26T100000Z-aaaa1111-q', text: 'Answer.' }));
+    expect(oneCard(app.board, card.id).column).toBe('doing');
     await app.close();
   });
 });

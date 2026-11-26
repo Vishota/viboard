@@ -5,7 +5,7 @@ import { api, assetUrl } from '../api';
 import { attachmentName, formatDateTime, formatSize, isImage, stampMs } from '../format';
 import { renderMarkdown } from '../markdown';
 import { MODAL_ID, closeModal, confirmDialog, copyText, toast } from '../modal';
-import { projectName, state, sync } from '../store';
+import { activeThread, chatOpen, projectName, state, sync } from '../store';
 import CardForm from './CardForm.vue';
 import ModalShell from './ModalShell.vue';
 import { t } from '../i18n';
@@ -24,6 +24,19 @@ const signature = computed(() => {
   const c = summary.value;
   return c ? `${c.name}|${c.column}|${c.priority}|${c.project}|${c.lockedBy ?? ''}|${c.log}|${c.assets}` : '';
 });
+/** Карточка 057: из карточки — в её ветку чата. */
+const thread = computed(() =>
+  state.value?.questions.find(
+    (q) => q.card === props.name.slice(props.name.indexOf('-') + 1) || q.card === summary.value?.id,
+  ),
+);
+function openThread(): void {
+  if (thread.value) {
+    activeThread.value = thread.value.dir;
+    chatOpen.value = true;
+  }
+}
+
 async function copyId(): Promise<void> {
   try {
     await copyText(detail.value?.card.id ?? '');
@@ -161,6 +174,7 @@ async function copyForAgent(): Promise<void> {
         <button type="button" class="btn-sec" @click="edit">{{ t('Edit') }}</button>
         <button type="button" class="btn-sec" @click="fileInput?.click()">{{ t('Attach file') }}</button>
         <input ref="fileInput" type="file" hidden @change="attach" />
+        <button v-if="thread" type="button" class="btn-sec" @click="openThread">{{ t('Chat') }}</button>
         <button type="button" class="btn-sec" @click="copyForAgent">{{ t('Copy for agent') }}</button>
         <span class="grow" />
         <button type="button" class="btn-danger" @click="remove">{{ t('Delete') }}</button>

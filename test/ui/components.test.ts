@@ -4,6 +4,7 @@ import type { BoardState, CardSummary, Message, Thread } from '../../src/core/ty
 import App from '../../ui/src/App.vue';
 import BoardColumn from '../../ui/src/components/BoardColumn.vue';
 import CardModal from '../../ui/src/components/CardModal.vue';
+import ChatPanel from '../../ui/src/components/ChatPanel.vue';
 import BoardView from '../../ui/src/components/BoardView.vue';
 import FilterBar from '../../ui/src/components/FilterBar.vue';
 import SyncPanel from '../../ui/src/components/SyncPanel.vue';
@@ -61,6 +62,7 @@ const card = (extra: Partial<CardSummary> = {}): CardSummary => ({
   lockedAt: null,
   assets: 0,
   log: 0,
+  answered: false,
   ...extra,
 });
 
@@ -143,8 +145,16 @@ describe('тред чата', () => {
       props: { thread: thread([agent(first), owner('16px')]) },
       attachTo: document.body,
     });
+
     expect(answered.findAll('.variants')).toHaveLength(0);
     answered.unmount();
+  });
+
+  it('разметка варианта не попадает на кнопку: «**A.** путь» читается как «A. путь» (найдено вживую, карточка 057)', () => {
+    const first = 'A или B?\n\n## Options\n\n- **A.** Первый путь\n- **B.** Второй путь';
+    const open = mount(ThreadView, { props: { thread: thread([agent(first)]) }, attachTo: document.body });
+    expect(open.findAll('.variants button').map((b) => b.text())).toEqual(['A. Первый путь', 'B. Второй путь']);
+    open.unmount();
   });
 
   it('Enter отправляет и очищает поле, Shift+Enter — перенос строки', async () => {
@@ -609,6 +619,30 @@ describe('id карточки в интерфейсе (карточка 138)', (
     await flushPromises();
     expect(wrapper.find('.card-id').text()).toBe('057-problema');
     wrapper.unmount();
+    document.body.innerHTML = '';
+  });
+});
+
+describe('чат и карточка связаны (карточка 057)', () => {
+  afterEach(() => resetFilters());
+
+  it('на карточке с ответом владельца — пометка; в списке чата у ветки виден проект карточки', async () => {
+    const one = { ...card(), answered: true };
+    const dir = '2026-11-25T223835Z-41ae8240-001-x-q';
+    const withThreads = { ...board([one]), questions: [{ ...thread([agent('A or B?')]), dir, card: one.id }] };
+    state.value = withThreads;
+    const column = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
+    await flushPromises();
+    expect(column.find('.chip-answered').text()).toBe('answered');
+    column.unmount();
+
+    chatOpen.value = true;
+    const chat = mount(ChatPanel, { attachTo: document.body });
+    await flushPromises();
+    const row = chat.find('.thread-row');
+    expect(row.find('.chip').text()).toBe('Приложение');
+    expect(row.text()).toContain('Задача');
+    chat.unmount();
     document.body.innerHTML = '';
   });
 });

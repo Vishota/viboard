@@ -48,6 +48,8 @@ export interface CardSummary {
   lockedAt: number | null;
   assets: number;
   log: number;
+  /** Владелец ответил на вопрос агента: в логе есть запись answer (карточка 057). */
+  answered: boolean;
 }
 
 export interface CardInput {

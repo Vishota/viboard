@@ -43,6 +43,7 @@ function open(): void {
     <span class="chips">
       <span v-if="card.lockedBy !== null" class="chip chip-lock">lock-{{ card.lockedBy }}</span>
       <span class="chip">{{ projectName(card.project) }}</span>
+      <span v-if="card.answered" class="chip chip-answered">{{ t('answered') }}</span>
       <span class="chip" :class="`chip-p${card.priority}`">P{{ card.priority }}</span>
     </span>
   </article>

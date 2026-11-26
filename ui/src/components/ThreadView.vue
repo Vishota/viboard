@@ -3,8 +3,9 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { Thread } from '@core/types';
 import { api } from '../api';
 import { draftOf, saveDraft } from '../drafts';
-import { cardTitle, sync } from '../store';
-import { toast } from '../modal';
+import { cardTitle, state, sync } from '../store';
+import { openModal, toast } from '../modal';
+import CardModal from './CardModal.vue';
 import MessageBubble from './MessageBubble.vue';
 import { t } from '../i18n';
 
@@ -24,6 +25,11 @@ const input = ref<HTMLTextAreaElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const first = computed(() => props.thread.messages[0]?.body ?? '');
+/** Карточка 057: из ветки — в её карточку. */
+const card = computed(() => state.value?.cards.find((c) => c.id === props.thread.card));
+function openCard(): void {
+  if (card.value) openModal(CardModal, { name: card.value.name });
+}
 const variantsAt = computed(() => {
   const found = VARIANTS.map((marker) => first.value.indexOf(marker)).filter((at) => at >= 0);
   return found.length > 0 ? Math.min(...found) : -1;
@@ -37,7 +43,8 @@ const variants = computed(() =>
         .slice(variantsAt.value)
         .split('\n')
         .filter((line) => line.startsWith('- '))
-        .map((line) => line.slice(2).trim()),
+        // разметку варианта убираем: кнопка и ответ владельца читаются как текст (найдено вживую: «**A.** путь»)
+        .map((line) => line.slice(2).trim().replaceAll('**', '')),
 );
 /** Быстрые ответы — до первого ответа владельца, как в первом сообщении треда. */
 const quick = computed(() => variants.value.length > 0 && !props.thread.answered);
@@ -126,6 +133,15 @@ async function attach(event: Event): Promise<void> {
     <header class="chat-head">
       <button type="button" class="btn-sec btn-mini" :title="t('Back to list')" @click="emit('back')">‹</button>
       <h2>{{ title }}</h2>
+      <button
+        v-if="card"
+        type="button"
+        class="btn-sec btn-mini"
+        :title="t('Open the card of this thread')"
+        @click="openCard"
+      >
+        {{ t('Open card') }}
+      </button>
       <button type="button" class="icon-btn" :title="t('Close')" @click="emit('close')">✕</button>
     </header>
     <div ref="list" class="msgs">

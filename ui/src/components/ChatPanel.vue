@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Thread } from '@core/types';
+import type { CardSummary, Thread } from '@core/types';
 import { attachmentName, formatDateTime, preview, stampMs } from '../format';
-import { activeThread, cardTitle, chatOpen, state } from '../store';
+import { activeThread, cardTitle, chatOpen, projectName, state } from '../store';
 import ThreadView from './ThreadView.vue';
 import { t } from '../i18n';
 
@@ -15,6 +15,9 @@ function lastLine(t: Thread): string {
   if (!last) return '';
   return last.attachment === null ? preview(last.body) : `📎 ${attachmentName(last.attachment)}`;
 }
+
+/** Карточка ветки: в списке чата видно её проект — вопрос однозначно связан с карточкой (карточка 057). */
+const cardOf = (thread: Thread): CardSummary | undefined => state.value?.cards.find((c) => c.id === thread.card);
 
 const title = (thread: Thread): string => (thread.card === '' ? t('Question') : cardTitle(thread.card));
 </script>
@@ -35,6 +38,7 @@ const title = (thread: Thread): string => (thread.card === '' ? t('Question') : 
             <span class="thread-main">
               <span class="thread-top">
                 <b>{{ title(t) }}</b>
+                <span v-if="cardOf(t)" class="chip">{{ projectName(cardOf(t)?.project ?? '') }}</span>
                 <time>{{ formatDateTime(stampMs(t.created)) }}</time>
               </span>
               <span class="thread-preview">{{ lastLine(t) }}</span>
