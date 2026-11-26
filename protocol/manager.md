@@ -32,7 +32,7 @@ Read this after `AGENTS.md` when your assignment is the manager role. The manage
    - `doing/` without `lock-` → `viboard mv <id> todo`: the session never confirmed its claim.
    - `lock-` older than 24h → take it over (`viboard claim <id> --force`) or ask the owner whether the session died.
    - WIP: one session holds more than 2 cards in `doing/` → move the extra ones to `todo/`: `viboard mv <id> todo --force`. A card released this way is free for any session; its thread stays with it, and the next executor reads the owner's answer there (`AGENTS.md` → Working).
-   - `blocked/` and the owner has answered → `viboard unblock <id>`: with a lock it returns to `doing/`, without one — to `todo/`. A thread exists so that the executor does not stop: it asks, leaves the card in `blocked/`, takes the next one and returns for the answer — an answered card goes back to the queue promptly.
+   - `blocked/` with an answered thread and still there (the answer was written by hand, not through the interface) → `viboard unblock <id>`. An answer given in the interface returns the card to `todo/` by itself, without a lock and with an `answer` entry in its log.
    - `blocked/` without a thread → the question has not reached the owner. Report it in the batch (§8); relay the question into a thread only with the owner's approval.
    - `review/` without a verdict → hand the owner a briefing for a reviewer (`viboard prompt <id> --role reviewer` as the base). The owner starts the reviewer session, on a model of the owner's choice.
    - `done/` without an entry in the board `log/` → `viboard mv <id> doing`. Never write entries on behalf of the executor.
