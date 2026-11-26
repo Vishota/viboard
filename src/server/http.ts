@@ -174,7 +174,7 @@ export function respondError(res: ServerResponse, e: unknown): void {
 }
 
 /** Слушать один порт: занят — отказ (see listenWithFallback). */
-function listenOnce(server: Server, port: number, host: string): Promise<void> {
+export function listenOnce(server: Server, port: number, host: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (e: Error): void => {
       server.off('listening', onListening);

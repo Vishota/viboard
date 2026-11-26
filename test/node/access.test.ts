@@ -265,6 +265,24 @@ describe('удалённый слушатель', () => {
     await expect(remote('/api/ping')).rejects.toThrow();
   });
 
+  it('внутренний слушатель берёт любой свободный порт: занятые за локальным не мешают (найдено вживую: Hyper-V резервировал 100 портов подряд)', async () => {
+    // держим порты за локальным — так их держит резерв системы или другая программа
+    const busy: http.Server[] = [];
+    for (let port = localPort + 1; port <= localPort + 30; port++) {
+      const holder = http.createServer();
+      await new Promise<void>((resolve) => holder.listen(port, '127.0.0.1', resolve).on('error', () => resolve()));
+      busy.push(holder);
+    }
+    try {
+      await open();
+      const port = manager.port ?? 0;
+      expect(port > 0 && (port <= localPort || port > localPort + 30)).toBe(true);
+      expect((await remote('/api/pairing')).body).toBe('{"open":true}');
+    } finally {
+      await Promise.all(busy.map((holder) => new Promise<void>((resolve) => holder.close(() => resolve()))));
+    }
+  });
+
   it('без сессии устройство получает только оболочку страницы; управление доступом с туннеля недоступно', async () => {
     await open();
     const denied = await remote('/api/state');

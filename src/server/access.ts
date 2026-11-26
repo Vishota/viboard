@@ -15,7 +15,7 @@ import type { AccessState, TunnelTool } from '../core/types.js';
 import {
   HttpError,
   RateLimiter,
-  listenWithFallback,
+  listenOnce,
   originAllowed,
   readBody,
   readCookie,
@@ -136,7 +136,11 @@ export class AccessManager {
 
   private async listenRemote(): Promise<http.Server> {
     const remote = http.createServer((req, res) => void this.handleRemote(req, res));
-    this.remotePort = await listenWithFallback(remote, this.options.localPort() + 1, '127.0.0.1');
+    // порт любой: система не выдаст зарезервированный (Hyper-V резервирует сотни портов подряд — окно «+20» за локальным целиком попадало в резерв)
+    await listenOnce(remote, 0, '127.0.0.1');
+    const address = remote.address();
+    if (address === null || typeof address === 'string') throw new Error('the remote listener is not listening');
+    this.remotePort = address.port;
     return remote;
   }
 
