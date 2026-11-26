@@ -3,6 +3,7 @@
 A task board where everything is a folder of files. You work in an interface, as in Trello or ClickUp; an AI agent (ZCode, Claude Code, Cursor, Codex…) sees the same tasks as plain files and reads only what it needs: `ls` instead of a database, `cat` instead of an API.
 
 - **No database, no stateful service.** A folder in a column is a status, `lock-<tag>` means "taken", a thread in `questions/` is a conversation with you.
+- **Labels:** `labels: [agent, v0.2.0]` in the card — the version is filtered in the interface and found with `grep`; a card created through the CLI always carries `agent`.
 - **Card names read at a glance:** `vishota.com-003-tipografika` — project, number, essence; the priority is in the card (`viboard ls` sorts by it).
 - **Tokens are not wasted:** the log is small files, one per event; status is read by listing; the agent protocol is about 80 lines, the rest is per role.
 - **Secure by default:** the server listens on `127.0.0.1` only; another page cannot read or change the board; for access through a tunnel there is an opt-in password.

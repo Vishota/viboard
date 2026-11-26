@@ -22,6 +22,7 @@ CLI: `npx viboard <command>` (below — `viboard`; `viboard help` lists every co
 <board>/
   columns.yml                  columns from left to right
   projects.yml                 projects: id → name, path (where to work)
+  labels.yml                   known labels; a card takes them in its frontmatter
   backlog/ todo/ doing/ blocked/ review/ done/    columns = statuses
   questions/                   chat threads with the owner
   log/                         entries about closed cards
@@ -46,6 +47,7 @@ Status: `backlog` — the task is not ready · `todo` — ready to take · `doin
 ## Working
 
 - Worth remembering later — `viboard note <id> "<1–3 lines>"`.
+- Labels live in the card's frontmatter: `labels: [agent, v0.2.0]`. A card you create with `viboard card add` always gets `agent` — state it explicitly anyway: `--label agent`; other labels — `--label "bug,v0.2.0"`. A version label (`v0.2.0`) filters the board in the interface and is found without opening cards: `rg -l "v0.2.0" <board> -g README.md`. A card without `agent` was written by the owner.
 - Need the owner's answer — `viboard ask <id> "<question>"`. The thread in `questions/` is the only channel for a question; the card moves to `blocked/`. Do not extend the task text.
   - The owner decides from the thread alone. Context, options, consequences, a recommendation (`## Options` becomes buttons) and everything needed to choose — drafts, tables, designs, numbers — are the text of the thread. A file in `assets/` may only illustrate it (a screenshot, a patch), never carry the substance of the question.
   - A question is never a file in the card (`ask.md` and the like), and a card is never moved to `blocked/` by hand.
