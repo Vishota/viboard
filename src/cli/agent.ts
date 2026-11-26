@@ -10,7 +10,7 @@ import { ask, claim, note, verdictFail, verdictPass, readyForReview } from '../c
 import { toPosix } from '../core/paths.js';
 import { listThreads } from '../core/threads.js';
 import type { Card } from '../core/types.js';
-import { flag, type Args } from './args.js';
+import { flag, option, type Args } from './args.js';
 import { need, requireBoard, requireSession, textArg } from './context.js';
 import { say } from './io.js';
 
@@ -28,7 +28,8 @@ export function cmdLs(args: Args): number {
   if (only !== undefined && !columns.includes(only)) {
     throw new Fail(`no column «${only}»; columns: ${columns.join(', ')}`);
   }
-  const cards = listCards(board);
+  const wanted = option(args, 'label'); // карточка 059: viboard ls --label v0.2.0
+  const cards = listCards(board).filter((c) => wanted === undefined || c.labels.includes(wanted));
   const idWidth = Math.max(4, ...cards.map((c) => c.id.length)) + 2;
   const projectWidth = Math.min(26, Math.max(4, ...cards.map((c) => c.project.length))) + 2;
   for (const column of columns) {
@@ -38,7 +39,10 @@ export function cmdLs(args: Args): number {
     for (const c of here) {
       const lock = c.lockedBy ? `lock-${c.lockedBy}  ` : ''; // answered — ответ владельца получен (карточка 057)
       const answered = isAnswered(c) ? 'answered  ' : '';
-      say(`  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${answered}${c.title}`);
+      const labels = c.labels.length > 0 ? `[${c.labels.join(', ')}]  ` : '';
+      say(
+        `  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${answered}${labels}${c.title}`,
+      );
     }
   }
   return 0;

@@ -63,6 +63,7 @@ const card = (extra: Partial<CardSummary> = {}): CardSummary => ({
   assets: 0,
   log: 0,
   answered: false,
+  labels: [] as string[],
   ...extra,
 });
 
@@ -75,6 +76,7 @@ const board = (cards: CardSummary[] = []): BoardState => ({
   projects: [{ id: 'app', name: 'Приложение', path: 'C:/proj/app' }],
   questions: [],
   prompts: { board: 'b', executor: 'e', reviewer: 'r', manager: 'm' },
+  labels: ['agent'],
   protocol: { installed: '0.1.0', current: '0.1.0' },
   sync: {
     available: false,
@@ -643,6 +645,30 @@ describe('чат и карточка связаны (карточка 057)', () 
     expect(row.find('.chip').text()).toBe('Приложение');
     expect(row.text()).toContain('Задача');
     chat.unmount();
+    document.body.innerHTML = '';
+  });
+});
+
+describe('ярлыки в интерфейсе (карточка 059)', () => {
+  afterEach(() => resetFilters());
+
+  it('ярлыки видны на карточке; фильтр по ярлыку сужает список', async () => {
+    const one = card({ labels: ['agent', 'v0.2.0'] });
+    state.value = {
+      ...board([one, card({ id: '002-y', name: 'app-002-y', title: 'Другая', labels: [] })]),
+      labels: ['agent', 'v0.2.0'],
+    };
+    const column = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
+    await flushPromises();
+    expect(column.findAll('.chip-label').map((c) => c.text())).toEqual(['agent', 'v0.2.0']);
+    column.unmount();
+
+    filters.label = 'v0.2.0';
+    expect(state.value.cards.filter(cardMatches).map((c) => c.id)).toEqual(['001-x']);
+    const bar = mount(FilterBar, { attachTo: document.body });
+    await flushPromises();
+    expect(bar.findAll('select.filter-project option').map((o) => o.text())).toContain('v0.2.0');
+    bar.unmount();
     document.body.innerHTML = '';
   });
 });

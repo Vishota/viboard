@@ -2,11 +2,11 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ENV_BOARD } from '../../src/core/board.js';
+import { ENV_BOARD, listCards } from '../../src/core/board.js';
 import { createCard, moveCard } from '../../src/core/ops.js';
 import { PROTOCOL_DIR } from '../../src/core/paths.js';
 import { initBoard } from '../../src/core/setup.js';
-import { cmdUnblock } from '../../src/cli/manage.js';
+import { cmdCardAdd, cmdUnblock } from '../../src/cli/manage.js';
 import { questionsText } from '../../src/cli/agent.js';
 import { parseArgs } from '../../src/cli/args.js';
 import { instant } from '../../src/cli/main.js';
@@ -98,6 +98,38 @@ describe('show печатает вопрос и ответ владельца', 
     expect(shown).toContain('Option A or option B?');
     expect(shown).toContain('Option A, and keep the old names.');
     expect(shown).toContain('answered by the owner');
+  });
+
+  afterAll(() => {
+    if (hadBoard === undefined) delete process.env[ENV_BOARD];
+    else process.env[ENV_BOARD] = hadBoard;
+    rmSync(root, { recursive: true, force: true });
+  });
+});
+
+// Карточка 059 (UD-46): карточка, созданная агентом через CLI, всегда несёт ярлык agent.
+describe('viboard card add: ярлык agent по умолчанию', () => {
+  const root = mkdtempSync(join(tmpdir(), 'viboard-labels-'));
+  const hadBoard = process.env[ENV_BOARD];
+  const board = join(root, 'board');
+
+  it('без --label и с другими ярлыками карточка получает agent', async () => {
+    await initBoard({
+      board,
+      project: { name: 'T', path: root },
+      protocolDir: PROTOCOL_DIR,
+      version: '0.1.0-test',
+      noGit: true,
+    });
+    process.env[ENV_BOARD] = board;
+    cmdCardAdd(parseArgs(['card', 'add', '--project', 't', '--title', 'First', '--body', 'text']));
+    cmdCardAdd(
+      parseArgs(['card', 'add', '--project', 't', '--title', 'Second', '--body', 'text', '--label', 'bug,v0.2.0']),
+    );
+    const labels = listCards(board)
+      .map((c) => c.labels)
+      .sort();
+    expect(labels).toEqual([['agent'], ['bug', 'v0.2.0', 'agent']]); // данные ярлыки — в своём порядке, agent — последующим
   });
 
   afterAll(() => {

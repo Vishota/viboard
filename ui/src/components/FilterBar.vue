@@ -8,6 +8,10 @@ const PRIORITIES = [1, 2, 3, 4, 5] as const;
 
 const projects = computed(() => state.value?.projects ?? []);
 const total = computed(() => state.value?.cards.length ?? 0);
+/** Известные ярлыки доски и те, что стоят на карточках (карточка 059). */
+const labelNames = computed(() =>
+  [...new Set([...(state.value?.labels ?? []), ...(state.value?.cards.flatMap((c) => c.labels) ?? [])])].sort(),
+);
 
 function togglePriority(n: number): void {
   filters.priorities = filters.priorities.includes(n)
@@ -43,6 +47,10 @@ function togglePriority(n: number): void {
         P{{ n }}
       </button>
     </div>
+    <select v-model="filters.label" class="filter-project" :aria-label="t('Labels')">
+      <option value="">{{ t('All labels') }}</option>
+      <option v-for="name in labelNames" :key="name" :value="name">{{ name }}</option>
+    </select>
     <div class="filter-group">
       <button
         type="button"

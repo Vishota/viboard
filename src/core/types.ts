@@ -33,6 +33,8 @@ export interface Card {
   lockedAt: number | null;
   log: string[];
   assets: string[];
+  /** Ярлыки из frontmatter (карточка 059); agent — карточка создана агентом. */
+  labels: string[];
 }
 
 /** Карточка для списка (опрос UI): без тела и с счётчиками вместо листингов. */
@@ -50,6 +52,7 @@ export interface CardSummary {
   log: number;
   /** Владелец ответил на вопрос агента: в логе есть запись answer (карточка 057). */
   answered: boolean;
+  labels: string[];
 }
 
 export interface CardInput {
@@ -61,6 +64,7 @@ export interface CardInput {
   column?: string;
   /** Короткое имя для каталога; по умолчанию — из названия. */
   slug?: string;
+  labels?: string[];
 }
 
 export interface CardPatch {
@@ -68,6 +72,7 @@ export interface CardPatch {
   body?: string;
   project?: string;
   priority?: number;
+  labels?: string[];
 }
 
 export interface LogEntry {
@@ -155,6 +160,8 @@ export interface BoardState {
   sync: SyncInfo;
   /** Тексты заданий для новых сессий (тот же источник, что `viboard prompt`). */
   prompts: Record<'executor' | 'reviewer' | 'manager' | 'board', string>;
+  /** Известные ярлыки доски (карточка 059). */
+  labels: string[];
   protocol: { installed: string | null; current: string };
 }
 

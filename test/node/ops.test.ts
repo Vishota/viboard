@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { listCards, oneCard, readCard, readEntries, readProjects } from '../../src/core/board.js';
+import { listCards, oneCard, readCard, readEntries, readLabels, readProjects } from '../../src/core/board.js';
 import { checkBoard, fixBoard } from '../../src/core/check.js';
 import { Fail } from '../../src/core/errors.js';
 import { readText, writeAtomic } from '../../src/core/fs.js';
@@ -332,5 +332,54 @@ describe('чек-лист менеджера и лента', () => {
     const a = card(board, 'Читается');
     expect(readCard(board, 'todo', a.name).title).toBe('Читается');
     expect(readCard(board, 'todo', a.name).meta.priority).toBe('3');
+  });
+});
+
+// Карточка 059 (UD-46): ярлыки — во frontmatter карточки, известный список — labels.yml в корне доски.
+describe('ярлыки', () => {
+  it('создание и правка с ярлыками: frontmatter, известный список, повторы и неверные имена', async () => {
+    const board = await fresh();
+    const a = createCard(board, {
+      project: 'app',
+      title: 'Labeled',
+      body: 'text',
+      labels: ['v0.2.0', 'V0.2.0', 'bug'],
+    });
+    expect(a.labels).toEqual(['v0.2.0', 'bug']);
+    expect(readText(join(a.dir, 'README.md'))).toContain('labels: [v0.2.0, bug]');
+    expect(readLabels(board)).toEqual(['v0.2.0', 'bug']);
+    const plain = createCard(board, { project: 'app', title: 'Plain', body: 'text' });
+    expect(plain.labels).toEqual([]);
+    expect(readText(join(plain.dir, 'README.md'))).not.toContain('labels:');
+
+    const edited = editCard(board, a.id, { labels: ['bug', 'ui'] });
+    expect(edited.labels).toEqual(['bug', 'ui']);
+    expect(readLabels(board)).toEqual(['v0.2.0', 'bug', 'ui']);
+    expect(() => createCard(board, { project: 'app', title: 'Bad', body: 'text', labels: ['Not Valid'] })).toThrow(
+      /a label is lowercase/u,
+    );
+    expect(editCard(board, plain.id, { title: 'Renamed' }).labels).toEqual([]);
+  });
+
+  it('fix ставит ярлык agent карточкам, созданным агентами до ярлыков; check указывает на них', async () => {
+    const board = await fresh();
+    const marked = card(board, 'От агента');
+    writeAtomic(
+      join(marked.dir, 'README.md'),
+      `---\nid: ${marked.id}\nproject: app\ntitle: От агента\npriority: 3\n---\n\n**Автор карточки — агент** (менеджер): текст.\n`,
+    );
+    const own = card(board, 'От владельца');
+    const before = checkBoard(board, { protocolVersion: '0.1.0-test' }).map((f) => f.text);
+    expect(before.some((t) => t.includes('made by an agent but has no label «agent» — viboard fix'))).toBe(true);
+
+    fixBoard(board);
+    expect(oneCard(board, marked.id).labels).toEqual(['agent']);
+    expect(oneCard(board, own.id).labels).toEqual([]);
+    expect(readLabels(board)).toContain('agent');
+    expect(
+      checkBoard(board, { protocolVersion: '0.1.0-test' })
+        .map((f) => f.text)
+        .some((t) => t.includes('no label')),
+    ).toBe(false);
   });
 });

@@ -11,14 +11,17 @@ import {
   readCard,
   readCardDoc,
   readColumns,
+  readLabels,
   readProjects,
   writeColumns,
+  writeLabels,
   writeProjects,
 } from './board.js';
 import { Fail } from './errors.js';
 import { ensureDir, movePath, writeAtomic } from './fs.js';
 import { emptyDoc, formatDoc, type FieldValue } from './frontmatter.js';
 import {
+  LABEL_RE,
   LEGACY_LOCK,
   LOCK,
   LOCK_STALE_MS,
@@ -107,6 +110,8 @@ export function createCard(board: string, input: CardInput): Card {
     listCards(board).map((c) => c.id),
     slug,
   );
+  const labels = parseLabels(input.labels);
+  registerLabels(board, labels);
   const name = cardName(project, id);
   const dir = join(board, column, name);
   ensureDir(join(board, column));
@@ -118,7 +123,11 @@ export function createCard(board: string, input: CardInput): Card {
   ensureDir(join(dir, 'log'));
   writeAtomic(
     join(dir, 'README.md'),
-    formatDoc(emptyDoc(), { id, project, title, priority, depends_on: [], created: localDate() }, body),
+    formatDoc(
+      emptyDoc(),
+      { id, project, title, priority, depends_on: [], created: localDate(), ...(labels.length > 0 ? { labels } : {}) },
+      body,
+    ),
   );
   return readCard(board, column, name);
 }
@@ -133,6 +142,10 @@ export function editCard(board: string, ref: string, patch: CardPatch): Card {
   if (patch.body !== undefined && patch.body.trim() === '') throw new Fail('description cannot be empty');
   if (patch.project !== undefined) fm.project = parseProjectId(patch.project);
   if (patch.priority !== undefined) fm.priority = parsePriority(patch.priority);
+  if (patch.labels !== undefined) {
+    fm.labels = parseLabels(patch.labels);
+    registerLabels(board, fm.labels);
+  }
   assertAlive(card);
   writeAtomic(join(card.dir, 'README.md'), formatDoc(doc, fm, patch.body ?? doc.body));
   card = readCard(board, card.column, card.name);
@@ -310,6 +323,26 @@ const logged = (board: string, card: Card, entry: LogInput): Card => {
   addLog(card, entry);
   return readCard(board, card.column, card.name);
 };
+
+/** Ярлыки карточки: только правильные имена, без повторов; новое имя попадает в labels.yml (карточка 059). */
+export function parseLabels(input: readonly string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const raw of input ?? []) {
+    const name = raw.trim().toLowerCase();
+    if (!LABEL_RE.test(name)) {
+      throw new Fail(`a label is lowercase Latin letters, digits, dots and hyphens; got «${raw}»`);
+    }
+    if (!out.includes(name)) out.push(name);
+  }
+  return out;
+}
+
+/** Новые имена — в известный список доски; повторно не добавляются. */
+export function registerLabels(board: string, labels: readonly string[]): void {
+  const known = readLabels(board);
+  const fresh = labels.filter((name) => !known.includes(name));
+  if (fresh.length > 0) writeLabels(board, [...known, ...fresh]);
+}
 
 /** Карточка 057 (UD-45): владелец ответил в ветке — карточка возвращается из blocked/ в todo/, замок снимается,
  *  в лог пишется запись answer. Ответ читает та сессия, что возьмёт карточку следующей. Не в blocked/ — ничего не делает. */

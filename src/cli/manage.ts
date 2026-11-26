@@ -14,6 +14,7 @@ import { timeline } from '../core/timeline.js';
 import { VERSION } from '../core/version.js';
 import { flag, option, type Args } from './args.js';
 import { need, requireBoard, sessionOf } from './context.js';
+import { AGENT_LABEL } from '../core/names.js';
 import { firstLine, localTime, say } from './io.js';
 
 /** Как агенту звать CLI: из node_modules (npx, локальная установка) — `npx viboard`, иначе — `viboard`. */
@@ -107,6 +108,14 @@ export function cmdCardAdd(args: Args): number {
     priority: priority === undefined ? undefined : Number(priority),
     column: option(args, 'column'),
     slug: option(args, 'slug'),
+    // карточка 059 (UD-46): созданное агентом всегда несёт ярлык agent — по умолчанию и в дополнение к --label
+    labels: [
+      ...(option(args, 'label') ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s !== ''),
+      AGENT_LABEL,
+    ],
   });
   say(`${card.name} → ${card.column}/`);
   say(toPosix(card.dir));

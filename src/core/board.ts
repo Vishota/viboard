@@ -8,6 +8,8 @@ import { unquote, metaStr, parseDoc, type Doc } from './frontmatter.js';
 import { isRealDir, isRealFile, listDirs, listFiles, mtimeMs, readText, writeAtomic } from './fs.js';
 import {
   APP,
+  LABELS_FILE,
+  LABEL_RE,
   ID_RE,
   LEGACY_LOCK,
   LOCK,
@@ -50,6 +52,26 @@ export function writeColumns(board: string, columns: string[]): void {
   const head =
     '# Board columns from left to right, one per line.\n# Names are directory names; the UI adds and removes empty ones.\n';
   writeAtomic(join(board, 'columns.yml'), `${head}${columns.join('\n')}\n`);
+}
+
+/** Ярлыки доски — известный список, labels.yml в корне (карточка 059). */
+export function readLabels(board: string): string[] {
+  const text = readText(join(board, LABELS_FILE));
+  if (text === null) return [];
+  return [
+    ...new Set(
+      text
+        .split(/\r?\n/u)
+        .map((line) => line.replace(/^\s*-\s*/u, '').trim())
+        .filter((line) => line !== '' && !line.startsWith('#') && LABEL_RE.test(line)),
+    ),
+  ];
+}
+
+export function writeLabels(board: string, labels: string[]): void {
+  const head =
+    '# Known labels of the board, one per line ("- name"). A card takes them in the frontmatter: labels: [...].\n';
+  writeAtomic(join(board, LABELS_FILE), head + labels.map((name) => `- ${name}`).join('\n') + '\n');
 }
 
 export function readProjects(board: string): Project[] {
@@ -128,6 +150,7 @@ export function readCard(board: string, column: string, name: string): Card {
     lockedAt,
     log: listFiles(join(dir, 'log')).filter((f) => f.endsWith('.md')),
     assets: listFiles(join(dir, 'assets')),
+    labels: labelsOf(doc),
   };
 }
 
@@ -196,6 +219,12 @@ export function oneCard(board: string, ref: string): Card {
   );
 }
 
+/** Ярлыки из frontmatter: только строки с правильными именами (карточка 059). */
+const labelsOf = (doc: Doc): string[] => {
+  const v = doc.fields.find((f) => f.key === 'labels')?.value;
+  return Array.isArray(v) ? v.filter((x): x is string => LABEL_RE.test(x)) : [];
+};
+
 /** Владелец ответил на вопрос агента: в логе карточки есть запись answer (карточка 057, UD-45). */
 export const isAnswered = (c: Card): boolean => c.log.some((file) => file.endsWith('-answer.md'));
 
@@ -212,6 +241,7 @@ export const summaryOf = (c: Card): CardSummary => ({
   assets: c.assets.length,
   log: c.log.length,
   answered: isAnswered(c),
+  labels: c.labels,
 });
 
 export const readCardDoc = (card: Card): Doc => parseDoc(readText(join(card.dir, 'README.md')) ?? '');

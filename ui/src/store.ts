@@ -59,6 +59,7 @@ export const cardTitle = (id: string): string => state.value?.cards.find((c) => 
 export const filters = reactive({
   query: '',
   project: '',
+  label: '',
   priorities: [] as number[],
   locked: false,
   waiting: false,
@@ -69,6 +70,7 @@ export const bodyHits = ref<Set<string>>(new Set());
 export function resetFilters(): void {
   filters.query = '';
   filters.project = '';
+  filters.label = '';
   filters.priorities = [];
   filters.locked = false;
   filters.waiting = false;
@@ -78,6 +80,7 @@ export const filterActive = computed(
   () =>
     filters.query.trim() !== '' ||
     filters.project !== '' ||
+    filters.label !== '' ||
     filters.priorities.length > 0 ||
     filters.locked ||
     filters.waiting,
@@ -86,6 +89,7 @@ export const filterActive = computed(
 /** Видна ли карточка при текущих фильтрах. */
 export function cardMatches(c: CardSummary): boolean {
   if (filters.project !== '' && c.project !== filters.project) return false;
+  if (filters.label !== '' && !c.labels.includes(filters.label)) return false;
   if (filters.priorities.length > 0 && !filters.priorities.includes(c.priority)) return false;
   if (filters.locked && c.lockedBy === null) return false;
   if (filters.waiting && !state.value?.questions.some((q) => q.card === c.id && q.lastFrom === 'agent')) {

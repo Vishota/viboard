@@ -3,7 +3,7 @@
 
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
-import { listCards, oneCard, readColumns, readEntries, readProjects, summaryOf } from '../core/board.js';
+import { listCards, oneCard, readColumns, readEntries, readLabels, readProjects, summaryOf } from '../core/board.js';
 import { parseDoc } from '../core/frontmatter.js';
 import { installedProtocolVersion } from '../core/check.js';
 import { Fail } from '../core/errors.js';
@@ -51,6 +51,10 @@ const num = (body: Body, key: string): number | undefined => {
   return typeof v === 'string' && v.trim() !== '' ? Number(v) : undefined;
 };
 
+/** Ярлыки из запроса: массив строк (карточка 059); иначе — пустой список. */
+const labelsOf = (body: Body): string[] =>
+  Array.isArray(body.labels) ? body.labels.filter((x): x is string => typeof x === 'string') : [];
+
 const sizeOf = (file: string): number => {
   try {
     return statSync(file).size;
@@ -84,6 +88,7 @@ export async function buildState(ctx: ApiContext): Promise<BoardState> {
     projects: readProjects(board),
     questions: listThreads(board),
     prompts: promptSet(ctx.promptContext),
+    labels: readLabels(board),
     protocol: { installed: installedProtocolVersion(board), current: ctx.version },
     sync: await syncInfoCached(board),
   };
@@ -162,6 +167,7 @@ export async function handleJson(
         body: str(body, 'body'),
         priority: num(body, 'priority'),
         column: str(body, 'column') || undefined,
+        labels: labelsOf(body),
       });
       return { card: summaryOf(card) };
     }
@@ -171,6 +177,7 @@ export async function handleJson(
         body: typeof body.body === 'string' ? body.body : undefined,
         project: str(body, 'project') || undefined,
         priority: num(body, 'priority'),
+        ...(body.labels === undefined ? {} : { labels: labelsOf(body) }),
       });
       return { card: summaryOf(card) };
     }

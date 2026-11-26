@@ -59,7 +59,8 @@ Manager
   viboard prompt [id] [--role R]           briefing for a new session: executor | reviewer | manager
 
 By hand
-  viboard card add --project <id> --title "<title>" [--body "<text>" | --body-file F] [--priority 1-5] [--column C]
+  viboard card add --project <id> --title "<title>" [--body "<text>" | --body-file F] [--priority 1-5] [--column C] [--label "a,b"]
+                                         the card always gets the label agent; state it anyway: --label agent
   viboard stamp --session <tag> --card <id|-> --kind <type> [--dir <directory>]
   viboard shell                            shell commands for your OS
 

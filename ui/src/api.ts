@@ -61,6 +61,7 @@ export const api = {
     body: string;
     project: string;
     priority: number;
+    labels?: string[];
   }): Promise<{ card: CardSummary }> => post('/api/card', body),
   editCard: (body: CardPatch & { name: string }): Promise<{ card: CardSummary }> => post('/api/card/edit', body),
   moveCard: (name: string, to: string): Promise<{ card: CardSummary }> => post('/api/card/move', { name, to }),

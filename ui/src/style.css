@@ -1211,3 +1211,24 @@ a {
 .help-steps + .btn-sec {
   margin-top: 2px;
 }
+
+/* Карточка 057: на карточке — ответ владельца получен */
+.chip-answered {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+/* Карточка 059: ярлыки */
+.chip-label {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.chip.chip-on {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+.label-new {
+  margin-top: 6px;
+}

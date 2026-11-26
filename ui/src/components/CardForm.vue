@@ -6,7 +6,7 @@ import { t } from '../i18n';
 
 /** Карточка в режиме правки; без неё — создание новой. */
 const props = defineProps<{
-  card?: { name: string; title: string; body: string; project: string; priority: number };
+  card?: { name: string; title: string; body: string; project: string; priority: number; labels?: string[] };
 }>();
 const emit = defineEmits<{ close: []; saved: [] }>();
 const close = (): void => emit('close');
@@ -32,6 +32,21 @@ const body = ref(props.card?.body ?? '');
 const project = ref(initialProject());
 const priority = ref(props.card?.priority ?? 3);
 
+/** Карточка 059: ярлыки — известые переключаются, новое имя добавляется; сохраняются во frontmatter карточки. */
+const labels = ref<string[]>([...(props.card?.labels ?? [])]);
+const newLabel = ref('');
+const knownLabels = computed(() => state.value?.labels ?? []);
+const LABEL_NAME = /^[a-z0-9][a-z0-9._-]{0,31}$/;
+function toggleLabel(name: string): void {
+  labels.value = labels.value.includes(name) ? labels.value.filter((l) => l !== name) : [...labels.value, name];
+}
+function addLabel(): void {
+  const name = newLabel.value.trim().toLowerCase();
+  if (!LABEL_NAME.test(name)) return;
+  if (!labels.value.includes(name)) labels.value = [...labels.value, name];
+  newLabel.value = '';
+}
+
 const addingProject = ref(false);
 const projectName = ref('');
 const projectPath = ref('');
@@ -49,7 +64,13 @@ async function submit(): Promise<void> {
     if (addingProject.value) {
       projectId = (await api.addProject({ name: projectName.value, path: projectPath.value })).project.id;
     }
-    const fields = { title: title.value, body: body.value, project: projectId, priority: priority.value };
+    const fields = {
+      title: title.value,
+      body: body.value,
+      project: projectId,
+      priority: priority.value,
+      labels: labels.value,
+    };
     if (props.card) await api.editCard({ name: props.card.name, ...fields });
     else await api.createCard(fields);
     try {
@@ -101,6 +122,32 @@ async function submit(): Promise<void> {
           <input v-model="priority" type="radio" name="priority" :value="n" />
           <span>{{ n }}</span>
         </label>
+      </div>
+    </div>
+    <div class="field">
+      <span>{{ t('Labels') }}</span>
+      <div class="chips">
+        <button
+          v-for="name in [...knownLabels, ...labels].filter((v, i, a) => a.indexOf(v) === i)"
+          :key="name"
+          type="button"
+          class="chip"
+          :class="{ 'chip-on': labels.includes(name), 'chip-label': labels.includes(name) }"
+          :aria-pressed="labels.includes(name)"
+          @click="toggleLabel(name)"
+        >
+          {{ name }}
+        </button>
+      </div>
+      <div class="row label-new">
+        <input
+          v-model="newLabel"
+          name="newLabel"
+          maxlength="32"
+          :placeholder="t('new label, for example v0.2.0')"
+          @keydown.enter.prevent="addLabel"
+        />
+        <button type="button" class="btn-sec btn-mini" @click="addLabel">{{ t('Add label') }}</button>
       </div>
     </div>
     <div class="field">

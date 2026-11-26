@@ -4,6 +4,10 @@
 import { existsSync, renameSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expectedName, listCards, listGhosts, readCardDoc, readColumns, readEntries } from './board.js';
+import { writeAtomic } from './fs.js';
+import { formatDoc } from './frontmatter.js';
+import { AGENT_BODY_MARK, AGENT_LABEL } from './names.js';
+import { registerLabels } from './ops.js';
 import { metaList } from './frontmatter.js';
 import { isRealDir, listDirs, listFiles, movePath, readText } from './fs.js';
 import { LEGACY_LOCK, LOCK, LOCK_STALE_MS, WIP_LIMIT, parseEntryName } from './names.js';
@@ -49,6 +53,10 @@ export function checkBoard(board: string, options: CheckOptions): Finding[] {
     const at = `${c.column}/${c.name}`;
     const expected = expectedName(c);
     if (expected !== c.name) add('warn', `${at}: name does not match the card — expected ${expected} (viboard fix)`);
+    // карточка 059: выглядит как созданная агентом, а ярлыка нет
+    if (c.body.trimStart().startsWith(AGENT_BODY_MARK) && !c.labels.includes(AGENT_LABEL)) {
+      add('info', `${at}: made by an agent but has no label «${AGENT_LABEL}» — viboard fix`);
+    }
     if (c.lockedBy !== null && isRealDir(join(c.dir, `${LEGACY_LOCK}${c.lockedBy}`))) {
       add(
         'info',
@@ -183,6 +191,13 @@ export function fixBoard(board: string): string[] {
           done.push(`${c.name}: lock not renamed — ${(e as Error).message}`);
         }
       }
+    }
+    // карточка 059 (UD-46): созданные агентами карточки получают ярлык agent по первой строке текста
+    if (c.body.trimStart().startsWith(AGENT_BODY_MARK) && !c.labels.includes(AGENT_LABEL)) {
+      const doc = readCardDoc(c);
+      writeAtomic(join(c.dir, 'README.md'), formatDoc(doc, { labels: [...c.labels, AGENT_LABEL] }, doc.body));
+      registerLabels(board, [AGENT_LABEL]);
+      done.push(`${c.name}: label ${AGENT_LABEL} added`);
     }
     const expected = expectedName(c);
     if (expected === c.name) continue;

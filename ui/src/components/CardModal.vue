@@ -133,6 +133,7 @@ async function copyForAgent(): Promise<void> {
         body: detail.card.body,
         project: detail.card.project,
         priority: detail.card.priority,
+        labels: detail.card.labels,
       }"
       @close="editing = false"
       @saved="saved"

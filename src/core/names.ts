@@ -14,10 +14,17 @@ export type ThreadKind = (typeof THREAD_KINDS)[number];
 export type Kind = LogKind | ThreadKind;
 export const KINDS: readonly Kind[] = [...LOG_KINDS, ...THREAD_KINDS];
 
-/** Тег владельца: всё, что написано через UI. Агентам недоступен. */
+/** Ярлыки (карточка 059, UD-46): живут во frontmatter карточки (`labels: [...]`), известный список — labels.yml.
+ *  Ярлык agent — карточка, созданная агентом; без него — карточка владельца. */
+export const LABELS_FILE = 'labels.yml';
+export const AGENT_LABEL = 'agent';
+/** Первая строка текста карточек, созданных агентами до ярлыков: по ней `viboard fix` ставит ярлык agent. */
+export const AGENT_BODY_MARK = '**Автор карточки — агент**';
+
 /** Настройки синхронизации с git (карточка 049): на устройстве, в gitignore доски. */
 export const SYNC_SETTINGS = 'sync.json';
 
+/** Тег владельца: всё, что написано через UI. Агентам недоступен. */
 export const OWNER = 'owner';
 /** Так подписывался UI до переименования (старые сообщения и вложения в тредах). */
 export const LEGACY_OWNER = 'ui-owner';
@@ -43,6 +50,8 @@ export const CARD_NAME_RE = new RegExp(`^(${P.project})-(${ID})$`);
 /** Прежний формат <проект>-P<1..5>-<NNN>-<слаг>: читается, переводится в новый через `viboard fix`. */
 export const LEGACY_CARD_NAME_RE = new RegExp(`^(${P.project})-P([1-5])-(${ID})$`);
 export const ID_RE = new RegExp(`^${ID}$`);
+/** Ярлык — как id проекта: lowercase латиница, цифры, точки, дефисы (`bug`, `v0.2.0`). */
+export const LABEL_RE = new RegExp(`^${P.project}$`);
 export const SLUG_RE = new RegExp(`^${P.slug}$`);
 export const PROJECT_RE = new RegExp(`^${P.project}$`);
 export const MSG_RE = new RegExp(`^(${P.stamp})-(${P.tag})-msg\\.md$`);
