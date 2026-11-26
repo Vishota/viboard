@@ -26,14 +26,30 @@ export function writeSyncSettings(board: string, settings: Partial<SyncSettings>
   return next;
 }
 
-/** Последняя содержательная строка stderr: её видит владелец. */
-const brief = (text: string): string => {
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !/^(hint:|warning:)/i.test(line));
+/** Совет git («hint: …» и его продолжения
+ *  до пустой строки) отрезается целиком — иначе полезная строка теряется за хвостом совета (возврат ревью по 049). */
+/** Последняя содержательная строка stderr. Экспорт — для теста: хвост совета git не должен её прятать. */
+export const brief = (text: string): string => {
+  const lines: string[] = [];
+  let inHint = false;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (line === '') {
+      inHint = false;
+      continue;
+    }
+    if (/^hint:/i.test(line)) {
+      inHint = true;
+      continue;
+    }
+    if (inHint || /^warning:/i.test(line)) continue;
+    lines.push(line);
+  }
   return lines.at(-1) ?? '';
 };
+
+/** Бинарника git нет на устройстве (ENOENT) — отличается от «папка не репозиторий» (возврат ревью по 049). */
+let gitMissing = false;
 
 function git(board: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -48,7 +64,11 @@ function git(board: string, args: string[]): Promise<string> {
         maxBuffer: 8 * 1024 * 1024,
         env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
       },
-      (error, stdout, stderr) => (error === null ? resolve(stdout) : reject(new Error(brief(stderr) || error.message))),
+      (error, stdout, stderr) => {
+        if (error === null) return resolve(stdout);
+        gitMissing = (error as NodeJS.ErrnoException).code === 'ENOENT';
+        reject(new Error(brief(stderr) || error.message));
+      },
     );
   });
 }
@@ -87,7 +107,7 @@ export async function syncInfo(board: string): Promise<SyncInfo> {
   if (top === null || !samePath(top, board)) {
     return {
       available: false,
-      reason: top === null ? 'no-git' : 'inside-repo',
+      reason: top === null ? (gitMissing ? 'no-git' : 'no-repo') : 'inside-repo',
       remote: '',
       branch: '',
       ...settings,
@@ -200,13 +220,14 @@ export function syncNow(
 }
 
 /**
- * Автоматическая попытка по таймеру: делает только включённое. Конфликт сама не повторяет — его
- * разрешают снаружи и жмут кнопку; ошибку сети пробует снова на следующем такте.
+ * Автоматическая попытка по таймеру: делает только включённое. Конфликт и ошибку сети пробует снова на
+ * следующем такте: syncNow сам заново находит конфликт, если он ещё есть, и снимает флаг, если конфликт
+ * уже разрешён снаружи (агентом) — иначе после разрешения автоматика не возобновлялась бы никогда.
  */
 export async function syncAuto(board: string): Promise<SyncInfo | null> {
   const settings = readSyncSettings(board);
   const info = await syncInfo(board);
-  if (!info.available || running.has(board) || conflict.has(board)) return null;
+  if (!info.available || running.has(board)) return null;
   const push = settings.autoPush && info.remote !== '';
   if (!push && !(settings.autoPull && info.branch !== '')) return null;
   return syncNow(board, { commit: push, pull: settings.autoPull, push });

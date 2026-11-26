@@ -70,13 +70,14 @@ async function copyPrompt(): Promise<void> {
   <section v-if="info" class="sync">
     <h4 class="agent-heading">{{ t('Git sync') }}</h4>
     <p v-if="!info.available" class="board-hint">
-      {{
-        info.reason === 'inside-repo'
-          ? t(
-              'The board lies inside another repository. Sync works only when the board folder is a repository of its own.',
-            )
-          : t('Git is not installed. Install Git to sync this board between devices.')
-      }}
+      <!-- «папка не репозиторий» и «git не установлен» — разные случаи (возврат ревью по 049) -->
+      <template v-if="info.reason === 'inside-repo'">{{
+        t('The board lies inside another repository. Sync works only when the board folder is a repository of its own.')
+      }}</template>
+      <template v-else-if="info.reason === 'no-repo'">{{
+        t('The board folder is not a git repository yet. Run git init in it to sync the board between devices.')
+      }}</template>
+      <template v-else>{{ t('Git is not installed. Install Git to sync this board between devices.') }}</template>
     </p>
     <template v-else>
       <p class="board-hint">

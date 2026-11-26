@@ -80,7 +80,7 @@ const board = (cards: CardSummary[] = []): BoardState => ({
   protocol: { installed: '0.1.0', current: '0.1.0' },
   sync: {
     available: false,
-    reason: 'no-git',
+    reason: 'no-repo',
     remote: '',
     branch: '',
     autoPull: true,

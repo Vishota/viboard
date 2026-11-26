@@ -133,8 +133,8 @@ export type SyncState = 'off' | 'clean' | 'dirty' | 'conflict' | 'error';
 export interface SyncInfo {
   /** git есть и доска — корень своего репозитория; иначе синхронизация невозможна. */
   available: boolean;
-  /** Почему недоступно — показать владельцу. */
-  reason: 'no-git' | 'inside-repo' | null;
+  /** Почему недоступно — показать владельцу: нет бинарника git, папка не репозиторий, чужой репозиторий. */
+  reason: 'no-git' | 'no-repo' | 'inside-repo' | null;
   /** Адрес origin; пусто — доска ещё не подключена к удалённому репозиторию. */
   remote: string;
   branch: string;

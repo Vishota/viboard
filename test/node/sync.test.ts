@@ -3,11 +3,11 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listCards, readProjects } from '../../src/core/board.js';
 import { createCard, editCard } from '../../src/core/ops.js';
 import { PROTOCOL_DIR } from '../../src/core/paths.js';
-import { setRemote, syncInfo, syncNow, writeSyncSettings } from '../../src/core/sync.js';
+import { brief, setRemote, syncAuto, syncInfo, syncNow, writeSyncSettings } from '../../src/core/sync.js';
 import { initBoard } from '../../src/core/setup.js';
 
 // Карточка 049: git как машина состояний. Два устройства — два клона одного удалённого репозитория.
@@ -84,11 +84,13 @@ it('конфликт: одна карточка правлена на двух �
   expect(await git(b, 'status', '--porcelain')).not.toMatch(/^(UU|AA)/m);
   expect((await git(b, 'rev-list', '--count', '@{u}..HEAD')).trim()).toBe('1');
 
-  // агент решил конфликт снаружи (взял версию A) — следующая попытка проходит
+  // пока конфликт не разрешён, автоматика пробует снова и честно видит его
+  expect((await syncAuto(b))?.state).toBe('conflict');
+  // агент решил конфликт снаружи (взял версию A): автоматика возобновляется сама, без кнопки
   await git(b, 'checkout', '@{u}', '--', '.');
   await git(b, 'add', '-A');
   await git(b, 'commit', '-q', '--amend', '--no-edit');
-  expect((await syncNow(b)).state).toBe('clean');
+  expect((await syncAuto(b))?.state).toBe('clean');
 }, 30_000);
 
 it('недоступная сеть или чужой репозиторий: состояние error с текстом, доска работает', async () => {
@@ -120,5 +122,47 @@ it('доска внутри чужого репозитория и без git: �
     version: '0.1.0-test',
     noGit: true,
   });
-  expect(await syncInfo(bare)).toMatchObject({ available: false, reason: 'no-git', state: 'off' });
+  expect(await syncInfo(bare)).toMatchObject({ available: false, reason: 'no-repo', state: 'off' });
 }, 30_000);
+
+// Возврат ревью по 049 (сессия 58239c6e)
+describe('после возврата ревью', () => {
+  it('нет бинарника git — «no-git», есть git без репозитория — «no-repo»', async () => {
+    const plain = join(root, 'plain-board');
+    await initBoard({
+      board: plain,
+      project: { name: 'Тест', path: root },
+      protocolDir: PROTOCOL_DIR,
+      version: '0.1.0-test',
+      noGit: true,
+    });
+    expect(await syncInfo(plain)).toMatchObject({ available: false, reason: 'no-repo' });
+
+    const saved = process.env.PATH;
+    const empty = mkdtempSync(join(root, 'no-git-here-'));
+    process.env.PATH = empty; // в PATH нет git
+    try {
+      expect(await syncInfo(plain)).toMatchObject({ available: false, reason: 'no-git' });
+    } finally {
+      process.env.PATH = saved;
+    }
+    expect(await syncInfo(plain)).toMatchObject({ reason: 'no-repo' }); // флаг «нет git» не залипает
+  }, 30_000);
+
+  it('хвост совета git не прячет полезную строку ошибки', () => {
+    const stderr = [
+      "fatal: unable to access 'https://github.com/x/y.git/': Could not resolve host: github.com",
+      '',
+      'hint: Could not resolve hostname.',
+      "hint: in the config file 'C:/Users/x/.gitconfig' to adjust your credential",
+      'hint: configuration settings and redact the password in the URL.',
+      '',
+    ].join('\n');
+    expect(brief(stderr)).toBe(
+      "fatal: unable to access 'https://github.com/x/y.git/': Could not resolve host: github.com",
+    );
+    expect(brief('warning: LF will be replaced by CRLF\nerror: failed to push some refs\n')).toBe(
+      'error: failed to push some refs',
+    );
+  });
+});

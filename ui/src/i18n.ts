@@ -49,6 +49,8 @@ const ru: Record<string, string> = {
   'Git sync': 'Синхронизация с git',
   'The board lies inside another repository. Sync works only when the board folder is a repository of its own.':
     'Доска лежит внутри другого репозитория. Синхронизация работает, только когда папка доски — отдельный репозиторий.',
+  'The board folder is not a git repository yet. Run git init in it to sync the board between devices.':
+    'Папка доски ещё не git-репозиторий. Выполните в ней git init, чтобы синхронизировать доску между устройствами.',
   'Git is not installed. Install Git to sync this board between devices.':
     'Git не установлен. Установите Git, чтобы синхронизировать доску между устройствами.',
   'The board is a git repository: commit and push send your changes, pull brings the changes from another device.':
