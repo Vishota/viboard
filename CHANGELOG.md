@@ -10,8 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Chat and card are linked** (057): the chat list shows the project of the card, «Open card» in a thread opens its card, «Chat» in the card window opens its thread.
 - **Labels** (059): `labels: [agent, v0.2.0]` in the card's frontmatter, the known list in `labels.yml`. A card created through the CLI always carries `agent`. The interface filters by a label (a version in one click), `viboard ls --label v0.2.0` and `grep` find cards without opening them.
 - **Remote access on the same port** (141): `viboard public <password>` makes the running interface public — everyone, including localhost, signs in; `viboard local <password>` returns to localhost without a password. No second port.
-- **`viboard show <id>` prints the question and the owner's answer in full** (140), without `--log`.
+- **`viboard show <id>` prints the whole thread of the card** (140), every message in order, without `--log` — an agent reads the entire conversation.
 - **The card id is visible in the interface** (138) — on the card in the column and in the open card; a click copies it.
+- **The mark «question for you»** on a card whose question is still unanswered — the accent marks where your word is needed; «answered» is neutral (057).
 
 ### Fixed
 
