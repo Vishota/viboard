@@ -4,11 +4,13 @@ A task board where everything is a folder of files. You work in an interface, as
 
 - **No database, no stateful service.** A folder in a column is a status, `lock-<tag>` means "taken", a thread in `questions/` is a conversation with you.
 - **Labels:** `labels: [agent, v0.2.0]` in the card — the version is filtered in the interface and found with `grep`; a card created through the CLI always carries `agent`.
+- **Your answer brings the card back:** answer in the chat — the card returns to `todo` with the mark «answered», and any free agent can take it.
+- **Links to what is open:** `?card=<name>`, `?thread=…&chat=1` — a link opens the same card or thread.
 - **Card names read at a glance:** `vishota.com-003-tipografika` — project, number, essence; the priority is in the card (`viboard ls` sorts by it).
 - **Tokens are not wasted:** the log is small files, one per event; status is read by listing; the agent protocol is about 80 lines, the rest is per role.
 - **Secure by default:** the server listens on `127.0.0.1` only; another page cannot read or change the board; for access through a tunnel there is an opt-in password.
 
-**Repository:** <https://github.com/Vishota/viboard> — the guide, use cases and issues. Questions and bug reports: <https://github.com/Vishota/viboard/issues>.
+**Repository:** <https://github.com/Vishota/viboard> — the guide, use cases and issues. Questions and bug reports: <https://github.com/Vishota/viboard/issues>. What changed — [CHANGELOG](CHANGELOG.md).
 
 ## Quick start
 
