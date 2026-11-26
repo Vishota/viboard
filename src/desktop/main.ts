@@ -3,6 +3,7 @@
 
 import { BrowserWindow, Menu, app, dialog } from 'electron';
 
+import { ownPackage } from '../core/paths.js';
 import { openDesktop } from './app.js';
 import { prepareDesktopBoard } from './board.js';
 
@@ -21,9 +22,10 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on('window-all-closed', () => void app.quit());
   void app.whenReady().then(async () => {
-    // карточка 150: portable-запуску нужен явный идентификатор — иначе панель задач показывает значок
-    // не нашего окна, а загрузчика
-    app.setAppUserModelId(process.execPath);
+    // Идентификатор окна для панели задач — тот же, что у ярлыков установщика (build.appId): тогда закреплённый
+    // значок и работающее окно — одно приложение. Без appId (запуск из репозитория) — путь к exe.
+    const appId = ownPackage()?.json.appId;
+    app.setAppUserModelId(typeof appId === 'string' ? appId : process.execPath);
     Menu.setApplicationMenu(null); // без строки меню File / Edit / View / Window
     try {
       await openDesktop(await prepareDesktopBoard());

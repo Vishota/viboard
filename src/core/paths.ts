@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { APP } from './names.js';
 
 interface PackageJson {
+  /** Идентификатор окна для панели задач Windows (build.appId); кладётся в package.json сборкой exe. */
+  appId?: unknown;
   name?: unknown;
   version?: unknown;
 }
