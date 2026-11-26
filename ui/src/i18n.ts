@@ -87,6 +87,7 @@ const ru: Record<string, string> = {
   'Open card': 'Открыть карточку',
   'Open the card of this thread': 'Открыть карточку этой ветки',
   answered: 'есть ответ',
+  'question for you': 'вопрос вам',
   Chat: 'Чат',
   'Clear filters': 'Сбросить фильтры',
   Close: 'Закрыть',

@@ -631,12 +631,24 @@ describe('чат и карточка связаны (карточка 057)', () 
   it('на карточке с ответом владельца — пометка; в списке чата у ветки виден проект карточки', async () => {
     const one = { ...card(), answered: true };
     const dir = '2026-11-25T223835Z-41ae8240-001-x-q';
-    const withThreads = { ...board([one]), questions: [{ ...thread([agent('A or B?')]), dir, card: one.id }] };
+    const withThreads = {
+      ...board([one]),
+      questions: [{ ...thread([agent('A or B?'), owner('A.')]), dir, card: one.id, lastFrom: 'user' as const }],
+    };
     state.value = withThreads;
     const column = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
     await flushPromises();
     expect(column.find('.chip-answered').text()).toBe('answered');
+    expect(column.find('.chip-question').exists()).toBe(false); // на ответ карточка не ждёт
     column.unmount();
+
+    // вопрос без ответа — акцент: нужно слово владельца
+    state.value = { ...withThreads, questions: [{ ...withThreads.questions[0]!, card: one.id, lastFrom: 'agent' }] };
+    const asked = mount(BoardColumn, { props: { column: 'todo' }, attachTo: document.body });
+    await flushPromises();
+    expect(asked.find('.chip-question').text()).toBe('question for you');
+    asked.unmount();
+    state.value = withThreads;
 
     chatOpen.value = true;
     const chat = mount(ChatPanel, { attachTo: document.body });

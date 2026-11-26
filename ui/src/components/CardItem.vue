@@ -1,11 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { CardSummary } from '@core/types';
+import { state } from '../store';
 import { copyText, openModal, toast } from '../modal';
 import { projectName } from '../store';
 import CardModal from './CardModal.vue';
+import LabelChip from './LabelChip.vue';
 import { t } from '../i18n';
 
 const props = defineProps<{ card: CardSummary }>();
+/** Ветка карточки, где последнее сообщение от агента: владелец ещё не ответил. */
+const questionOpen = computed(() =>
+  (state.value?.questions ?? []).some((q) => q.card === props.card.id && q.lastFrom === 'agent'),
+);
 
 function onDragStart(event: DragEvent): void {
   if (event.dataTransfer === null) return;
@@ -43,9 +50,11 @@ function open(): void {
     <span class="chips">
       <span v-if="card.lockedBy !== null" class="chip chip-lock">lock-{{ card.lockedBy }}</span>
       <span class="chip">{{ projectName(card.project) }}</span>
+      <!-- Ответ получен — действий не требует, нейтрально; вопрос агенту без ответа — акцент: нужно ваше слово -->
       <span v-if="card.answered" class="chip chip-answered">{{ t('answered') }}</span>
+      <span v-if="questionOpen" class="chip chip-question">{{ t('question for you') }}</span>
       <span class="chip" :class="`chip-p${card.priority}`">P{{ card.priority }}</span>
-      <span v-for="label in card.labels" :key="label" class="chip chip-label">{{ label }}</span>
+      <LabelChip v-for="label in card.labels" :key="label" :name="label" />
     </span>
   </article>
 </template>

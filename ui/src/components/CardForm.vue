@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { api } from '../api';
 import { state, sync } from '../store';
+import LabelChip from './LabelChip.vue';
 import { t } from '../i18n';
 
 /** Карточка в режиме правки; без неё — создание новой. */
@@ -37,6 +38,8 @@ const labels = ref<string[]>([...(props.card?.labels ?? [])]);
 const newLabel = ref('');
 const knownLabels = computed(() => state.value?.labels ?? []);
 const LABEL_NAME = /^[a-z0-9][a-z0-9._-]{0,31}$/;
+/** Известные ярлыки доски и уже стоящие на карточке — без повторов. */
+const labelChoices = computed(() => [...new Set([...knownLabels.value, ...labels.value])]);
 function toggleLabel(name: string): void {
   labels.value = labels.value.includes(name) ? labels.value.filter((l) => l !== name) : [...labels.value, name];
 }
@@ -127,17 +130,14 @@ async function submit(): Promise<void> {
     <div class="field">
       <span>{{ t('Labels') }}</span>
       <div class="chips">
-        <button
-          v-for="name in [...knownLabels, ...labels].filter((v, i, a) => a.indexOf(v) === i)"
+        <LabelChip
+          v-for="name in labelChoices"
           :key="name"
-          type="button"
-          class="chip"
-          :class="{ 'chip-on': labels.includes(name), 'chip-label': labels.includes(name) }"
-          :aria-pressed="labels.includes(name)"
-          @click="toggleLabel(name)"
-        >
-          {{ name }}
-        </button>
+          :name="name"
+          :on="labels.includes(name)"
+          toggle
+          @toggle="toggleLabel"
+        />
       </div>
       <div class="row label-new">
         <input

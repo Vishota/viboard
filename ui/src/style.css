@@ -1212,16 +1212,21 @@ a {
   margin-top: 2px;
 }
 
-/* Карточка 057: на карточке — ответ владельца получен */
+/* Карточка 057: «есть ответ» — действий не требует, нейтрально; «вопрос вам» — акцент, нужно слово владельца */
 .chip-answered {
+  color: var(--dim);
+}
+
+.chip-question {
   border-color: var(--acc);
   color: var(--acc);
 }
 
-/* Карточка 059: ярлыки */
+/* Карточка 059: ярлык — один вид везде (LabelChip.vue): моноширинный, компактный; выбранный — акцент */
 .chip-label {
   font-family: var(--mono);
   font-size: 11px;
+  line-height: 1.5;
 }
 
 .chip.chip-on {
@@ -1229,6 +1234,6 @@ a {
   color: var(--acc);
 }
 
-.label-new {
-  margin-top: 6px;
+.chip-toggle {
+  cursor: pointer;
 }

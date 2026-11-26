@@ -30,6 +30,12 @@ export function cmdLs(args: Args): number {
   }
   const wanted = option(args, 'label'); // карточка 059: viboard ls --label v0.2.0
   const cards = listCards(board).filter((c) => wanted === undefined || c.labels.includes(wanted));
+  // вопрос агенту без ответа владельца — пометка: здесь нужно слово владельца
+  const open = new Set(
+    listThreads(board)
+      .filter((t) => t.lastFrom === 'agent' && t.card !== '')
+      .map((t) => t.card),
+  );
   const idWidth = Math.max(4, ...cards.map((c) => c.id.length)) + 2;
   const projectWidth = Math.min(26, Math.max(4, ...cards.map((c) => c.project.length))) + 2;
   for (const column of columns) {
@@ -39,9 +45,10 @@ export function cmdLs(args: Args): number {
     for (const c of here) {
       const lock = c.lockedBy ? `lock-${c.lockedBy}  ` : ''; // answered — ответ владельца получен (карточка 057)
       const answered = isAnswered(c) ? 'answered  ' : '';
+      const question = open.has(c.id) ? 'question  ' : '';
       const labels = c.labels.length > 0 ? `[${c.labels.join(', ')}]  ` : '';
       say(
-        `  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${answered}${labels}${c.title}`,
+        `  P${c.priority}  ${c.id.padEnd(idWidth)}${c.project.padEnd(projectWidth)}${lock}${question}${answered}${labels}${c.title}`,
       );
     }
   }
@@ -77,19 +84,21 @@ export function cmdShow(args: Args): number {
   return 0;
 }
 
-/** Карточка 140: вопросы владельцу по карточке и его ответы — целиком; без ответа — прямая фраза об этом. */
+/** Карточка 140: ветки карточки печатаются целиком, каждым сообщением по порядку — агент читает всю переписку,
+ *  не только первый вопрос и последний ответ. Без ответа владельца — прямая фраза об этом. */
 export function questionsText(board: string, cardId: string): string {
   const threads = listThreads(board).filter((t) => t.card === cardId);
   const out: string[] = [];
   threads.forEach((thread, i) => {
-    const question = thread.messages.find((m) => m.side === 'agent');
-    const answer = thread.messages.find((m) => m.side === 'user');
+    const answered = thread.messages.some((m) => m.side === 'user');
     out.push(
-      `\nquestion ${threads.length > 1 ? `${i + 1}/${threads.length} ` : ''}(${answer ? 'answered by the owner' : 'no answer yet'}):`,
+      `\nthread ${threads.length > 1 ? `${i + 1}/${threads.length} ` : ''}(${answered ? 'answered by the owner' : 'no answer yet'}) — read every message, the last ones included:`,
     );
-    if (question) out.push(indent(question.body));
-    if (answer) out.push(`\nowner's answer — follow it as written:\n${indent(answer.body)}`);
-    else out.push('  the owner has not answered yet — do not decide for them');
+    if (thread.messages.length === 0) out.push('  (empty)');
+    for (const message of thread.messages) {
+      out.push(`  ${message.side === 'user' ? 'owner' : `agent ${message.session}`}:\n${indent(message.body)}`);
+    }
+    if (!answered) out.push('  the owner has not answered yet — do not decide for them');
   });
   return out.join('\n');
 }

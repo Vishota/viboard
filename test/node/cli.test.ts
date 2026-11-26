@@ -98,10 +98,20 @@ describe('show печатает вопрос и ответ владельца', 
     writeFileSync(join(dir, 'README.md'), '---\nfrom: aaaa1111\ncard: 001-with-question\n---\n\nOption A or option B?');
     expect(questionsText(board, card.id)).toContain('the owner has not answered yet');
     writeFileSync(join(dir, 'answer.md'), '---\nfrom: aaaa1111\n---\n\nOption A, and keep the old names.');
+    writeFileSync(
+      join(dir, '2026-11-26T100500Z-aaaa1111-msg.md'),
+      '---\nfrom: aaaa1111\n---\n\nAnd the second question?',
+    );
+    writeFileSync(join(dir, '2026-11-26T100600Z-owner-msg.md'), '---\nfrom: owner\n---\n\nThe last word of the owner.');
     const shown = questionsText(board, card.id);
     expect(shown).toContain('Option A or option B?');
     expect(shown).toContain('Option A, and keep the old names.');
     expect(shown).toContain('answered by the owner');
+    // вся переписка, не только первое и последнее
+    expect(shown).toContain('And the second question?');
+    expect(shown).toContain('The last word of the owner.');
+    expect(shown.indexOf('Option A or option B?')).toBeLessThan(shown.indexOf('And the second question?'));
+    expect(shown.indexOf('And the second question?')).toBeLessThan(shown.indexOf('The last word of the owner.'));
   });
 
   afterAll(() => {
