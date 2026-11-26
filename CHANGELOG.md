@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **The Windows taskbar pin did not open the app** (046): the portable exe unpacks itself into a temporary folder, and the pin pointed to it. There is now an installer (`viboard-desktop Setup <version>.exe`) with a permanent location — pinning works with it; the portable file remains for those who want a single file. The window's identifier for the taskbar is the application id, the same as that of the installer's shortcuts.
 - Option buttons in a chat thread showed raw markup («**A.** …»); now «A. …», and that text goes as the answer (057).
 - One request to the mode endpoint without the control token could crash the server (141).
 

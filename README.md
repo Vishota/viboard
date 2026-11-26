@@ -94,14 +94,16 @@ Sync is off when Git is not installed or the board lies inside another repositor
 `viboard-desktop.exe` is the same board in its own window: no Node, no terminal. The board folder is the one `viboard` uses on this machine (`~/.viboard/board` unless another folder is set), so the CLI and the window show the same cards.
 
 ```sh
-npm run desktop:build        # → desktop/out/viboard-desktop <version>.exe (portable, one file)
+npm run desktop:build        # → desktop/out/: the installer and the portable exe
 ```
 
 The build needs the Electron runtime unpacked in `desktop/cache/electron/`: download `electron-v<version>-win32-x64.zip` from the [Electron releases](https://github.com/electron/electron/releases) (the version is the `electron` devDependency) and unpack it there once. The builder does not download it by itself.
 
 The exe, the taskbar and the window carry the viboard icon (the site favicon). The icon files in `desktop/icon/` are rebuilt only when the favicon changes: `node desktop/icon/build.mjs` (needs Edge or Chrome).
 
-The build also writes `<name>.exe.sha256` next to the file. The exe is not signed: Windows shows a SmartScreen warning on the first start — that is why the release page gives the checksum.
+**Two files come out of the build.** Take `viboard-desktop Setup <version>.exe` — the installer: it puts the program in a permanent place, makes shortcuts, and the icon pinned to the taskbar keeps working. `viboard-desktop <version>.exe` is the portable file: one file, nothing is installed, but it unpacks itself into a temporary folder on every start — a taskbar pin points to that folder and does not survive the exit.
+
+The build also writes `<name>.exe.sha256` next to every file. The exe is not signed: Windows shows a SmartScreen warning on the first start — that is why the release page gives the checksum.
 
 ## Development
 
