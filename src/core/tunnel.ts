@@ -4,8 +4,8 @@
 // в рантайме нет (UD-25) — клиент ставится по согласию владельца, через npm, вызванный рядом с node.
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import { readText } from './fs.js';
 import { randomCode } from './access.js';
 import type { TunnelTool } from './types.js';
@@ -19,7 +19,7 @@ export interface FoundTool extends TunnelTool {
   cli: string | null;
 }
 
-/** Где искать клиента: <корень>/tools/node_modules/virunx — в пакете (exe) и в папке настроек (npm). */
+/** Где искать клиента: <корень>/node_modules/virunx — в пакете (вшит в exe) и в папке настроек (поставлен по согласию). */
 export function findTunnelTool(roots: readonly string[]): FoundTool {
   const sources: TunnelTool['source'][] = ['bundled', 'installed'];
   for (const [i, root] of roots.entries()) {
@@ -30,7 +30,8 @@ export function findTunnelTool(roots: readonly string[]): FoundTool {
       const pkg = JSON.parse(json) as { version?: unknown; bin?: unknown };
       const bin =
         typeof pkg.bin === 'string' ? pkg.bin : (pkg.bin as Record<string, string> | undefined)?.[TUNNEL_TOOL.package];
-      if (typeof bin === 'string' && existsSync(join(dir, bin))) {
+      // версия — точно заданная: пара «viboard + virunx» проверена вживую; другая считается отсутствующей
+      if (pkg.version === TUNNEL_TOOL.version && typeof bin === 'string' && existsSync(join(dir, bin))) {
         return { state: 'ready', source: sources[i] ?? 'installed', cli: join(dir, bin) };
       }
     } catch {
@@ -40,14 +41,44 @@ export function findTunnelTool(roots: readonly string[]): FoundTool {
   return { state: 'missing', source: null, cli: null };
 }
 
-/** npm рядом с исполнимым файлом node — без PATH и оболочки: так работает и при сломанном PATH. */
+/**
+ * npm без PATH и оболочки — рядом с исполнимым файлом node: так работает и при сломанном PATH.
+ * Windows и каталоги версий (nvm, fnm, volta) держат npm под bin; unix — в lib/node_modules;
+ * Debian/Ubuntu — в share/nodejs. Последний довод — npm из PATH, по ссылке на его каталог.
+ */
 export function npmCandidates(): string[] {
   const nodeDir = join(process.execPath, '..');
-  return [
-    join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    join(nodeDir, '..', '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-  ].filter((file) => existsSync(file));
+  const cli = (...parts: string[]): string => join(nodeDir, ...parts, NPM_CLI);
+  const candidates = [
+    cli('node_modules'),
+    cli('..', 'lib', 'node_modules'),
+    cli('..', '..', 'lib', 'node_modules'),
+    cli('..', 'share', 'nodejs'),
+    cli('..', '..', 'share', 'nodejs'),
+    ...npmOnPath(),
+  ];
+  return [...new Set(candidates)].filter((file) => existsSync(file));
+}
+
+const NPM_CLI = join('node_modules', 'npm', 'bin', 'npm-cli.js');
+
+function npmOnPath(): string[] {
+  const name = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const found: string[] = [];
+  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+    if (dir === '') continue;
+    found.push(join(dir, NPM_CLI));
+    // unix: bin/npm — ссылка на npm-cli.js (установщик, Homebrew) либо на сценарий в lib/node_modules
+    let real: string;
+    try {
+      real = realpathSync(join(dir, name));
+    } catch {
+      continue;
+    }
+    if (real.endsWith(NPM_CLI)) found.push(real);
+    found.push(join(real, '..', '..', 'lib', NPM_CLI));
+  }
+  return found;
 }
 
 function run(args: string[], onText?: (text: string) => void): Promise<{ code: number | null; output: string }> {
@@ -74,7 +105,9 @@ function run(args: string[], onText?: (text: string) => void): Promise<{ code: n
 export async function installTunnelTool(installDir: string): Promise<void> {
   const npm = npmCandidates()[0];
   if (npm === undefined)
-    throw new Error('npm is not found next to node — install virunx yourself: npm install -g virunx');
+    throw new Error(
+      `npm is not found next to node — run it yourself: npm install --prefix "${installDir}" ${TUNNEL_TOOL.package}@${TUNNEL_TOOL.version}`,
+    );
   const { code, output } = await run([
     npm,
     'install',

@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { DEVICE_COOKIE, Devices, KEY_TTL_MS, PairingKey, deviceName, randomCode } from '../../src/core/access.js';
 import { listCards } from '../../src/core/board.js';
 import { PROTOCOL_DIR } from '../../src/core/paths.js';
-import { findTunnelTool, npmCandidates, startTunnel } from '../../src/core/tunnel.js';
+import { findTunnelTool, npmCandidates, startTunnel, TUNNEL_TOOL } from '../../src/core/tunnel.js';
 import { createBoardServer, listenWithFallback, type BoardServer } from '../../src/server/server.js';
 import { initBoard } from '../../src/core/setup.js';
 
@@ -80,13 +80,10 @@ let sequence = 0;
 const hadHome = process.env.VIBOARD_HOME;
 
 /** Подделка virunx. failTimes — сколько первых запусков отвечают «имя занято» и падают. */
-function fakeTool(dir: string, failTimes = 0): string {
+function fakeTool(dir: string, failTimes = 0, version: string = TUNNEL_TOOL.version): string {
   const pkg = join(dir, 'node_modules', 'virunx');
   mkdirSync(pkg, { recursive: true });
-  writeFileSync(
-    join(pkg, 'package.json'),
-    JSON.stringify({ name: 'virunx', version: '0.5.0', bin: { virunx: 'cli.js' } }),
-  );
+  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: 'virunx', version, bin: { virunx: 'cli.js' } }));
   const counter = join(dir, 'runs').replaceAll('\\', '/');
   const cli = [
     "import { readFileSync, writeFileSync, existsSync } from 'node:fs';",
@@ -223,7 +220,14 @@ describe('клиент туннеля', () => {
     expect(findTunnelTool([join(dir, 'no'), dir])).toMatchObject({ state: 'ready', source: 'installed' });
     expect(findTunnelTool([dir])).toMatchObject({ state: 'ready', source: 'bundled' });
     expect(findTunnelTool([])).toEqual({ state: 'missing', source: null, cli: null });
-    expect(Array.isArray(npmCandidates())).toBe(true);
+    // другая версия — как отсутствующая: пара «viboard + virunx» проверяется вживую
+    const old = join(root, 'tool-old');
+    fakeTool(old, 0, '0.4.0');
+    expect(findTunnelTool([old])).toEqual({ state: 'missing', source: null, cli: null });
+    // npm ищется без PATH: рядом с node, во всех стандартных раскладках
+    const npm = npmCandidates();
+    expect(npm.length).toBeGreaterThan(0);
+    expect(npm.every((file) => file.endsWith(join('npm-cli.js')))).toBe(true);
   });
 
   it('запускается скрытым и без подмены имени, ссылку берёт из строки live; «имя занято» — другое имя; останавливается', async () => {

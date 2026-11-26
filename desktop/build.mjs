@@ -1,5 +1,6 @@
 // Карточка 046: сборка exe. Готовит desktop/stage (проект для electron-builder: package.json оболочки +
-// копия пакета viboard — package.json, dist, protocol), запускает electron-builder и собирает лаунчер.
+// копия пакета viboard — package.json, dist, protocol и вшитый инструмент туннеля), запускает electron-builder
+// и собирает лаунчер.
 // Результат — desktop/out/viboard-desktop <version>.exe: один файл, portable и «типа-установка» сразу
 // (слово владельца, UD-54; скрипт лаунчера — desktop/launcher.nsi).
 
@@ -7,6 +8,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import process from 'node:process';
@@ -29,6 +31,10 @@ await writeFile(
 for (const dir of ['dist', 'protocol']) await cp(join(root, dir), join(app, dir), { recursive: true });
 // значок окна и панели задач лежит в корне пакета: окно берёт его по ROOT (карточка 150)
 await cp(join(root, 'desktop', 'icon', 'icon.png'), join(app, 'icon.png'));
+// Инструмент туннеля (UD-55) вшит в exe — той же функцией, что ставит его по согласию в npm-пакете:
+// версия и флаги в одном месте (dist/core/tunnel.js); на пустой системе не нужны ни Node, ни npm.
+const { installTunnelTool } = await import(pathToFileURL(join(app, 'dist', 'core', 'tunnel.js')).href);
+await installTunnelTool(join(app, 'tools'));
 
 await writeFile(
   join(stage, 'package.json'),
