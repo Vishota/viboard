@@ -157,3 +157,21 @@ describe('viboard ask', () => {
     expect(listThreads(board)[0]?.card).toBe(card.id);
   });
 });
+
+// Возврат ревью по 050 (сессия 58239c6e): fix не терял приоритет старой карточки, если в README нет поля priority.
+describe('fix старой папки без priority в README', () => {
+  it('приоритет из имени записывается в карточку и остаётся после переименования', async () => {
+    const board = await fresh('oldname-nopriority');
+    const card = createCard(board, { project: 'legacy', title: 'Oldstyle', body: 'text' });
+    const old = join(board, card.column, 'legacy-P2-001-oldstyle');
+    renameSync(card.dir, old);
+    writeAtomic(join(old, 'README.md'), `---\nid: ${card.id}\nproject: legacy\ntitle: Oldstyle\n---\n\ntext\n`);
+    expect(oneCard(board, '001').priority).toBe(2);
+
+    const done = fixBoard(board);
+    expect(done).toContain('legacy-P2-001-oldstyle: priority 2 written to the card');
+    expect(done).toContain('legacy-P2-001-oldstyle → legacy-001-oldstyle');
+    expect(oneCard(board, '001').priority).toBe(2);
+    expect(readText(join(board, card.column, 'legacy-001-oldstyle', 'README.md'))).toContain('priority: 2');
+  });
+});

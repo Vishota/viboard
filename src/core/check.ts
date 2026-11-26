@@ -10,7 +10,7 @@ import { AGENT_BODY_MARK, AGENT_LABEL } from './names.js';
 import { registerLabels } from './ops.js';
 import { metaList } from './frontmatter.js';
 import { isRealDir, listDirs, listFiles, movePath, readText } from './fs.js';
-import { LEGACY_LOCK, LOCK, LOCK_STALE_MS, WIP_LIMIT, parseEntryName } from './names.js';
+import { LEGACY_LOCK, LOCK, LOCK_STALE_MS, parseEntryName, parseLegacyCardName, WIP_LIMIT } from './names.js';
 import { listThreads } from './threads.js';
 import type { Finding, FindingLevel } from './types.js';
 
@@ -198,6 +198,14 @@ export function fixBoard(board: string): string[] {
       writeAtomic(join(c.dir, 'README.md'), formatDoc(doc, { labels: [...c.labels, AGENT_LABEL] }, doc.body));
       registerLabels(board, [AGENT_LABEL]);
       done.push(`${c.name}: label ${AGENT_LABEL} added`);
+    }
+    // возврат ревью по 050: у старой папки приоритет был в имени; если в README его нет — записываем его во
+    // frontmatter до переименования, иначе после переименования он потеряется
+    const legacyName = parseLegacyCardName(c.name);
+    if (legacyName && !readCardDoc(c).fields.some((f) => f.key === 'priority')) {
+      const doc = readCardDoc(c);
+      writeAtomic(join(c.dir, 'README.md'), formatDoc(doc, { priority: legacyName.priority }, doc.body));
+      done.push(`${c.name}: priority ${legacyName.priority} written to the card`);
     }
     const expected = expectedName(c);
     if (expected === c.name) continue;
