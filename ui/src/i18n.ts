@@ -88,6 +88,7 @@ const ru: Record<string, string> = {
   'new label, for example v0.2.0': 'новый ярлык, например v0.2.0',
   'Open card': 'Открыть карточку',
   'Open the card of this thread': 'Открыть карточку этой ветки',
+  'Restore draft': 'восстановить черновик',
   answered: 'есть ответ',
   'question for you': 'вопрос вам',
   Chat: 'Чат',

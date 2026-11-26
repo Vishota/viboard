@@ -16,8 +16,20 @@ const MAX_FILE = 20 * 1048576;
 /** Раздел вариантов: `## Options` (протокол) и `## Варианты` (доски, начатые на русском протоколе). */
 const VARIANTS = ['## Options', '## Варианты'];
 
-const draft = ref(draftOf(props.thread.dir));
-watch(draft, (value) => saveDraft(props.thread.dir, value));
+// Карточка 154: поле открывается пустым; набранный текст сохраняется по мере ввода и возвращается
+// незаметной ссылкой «восстановить черновик» — молча подставлять его в поле нельзя.
+const saved = ref(draftOf(props.thread.dir));
+const draft = ref('');
+watch(draft, (value) => {
+  saveDraft(props.thread.dir, value);
+  saved.value = value;
+});
+/** Ссылка видна, только когда есть сохранённый текст, а поле пустое. */
+const canRestore = computed(() => saved.value.trim() !== '' && draft.value === '');
+function restoreDraft(): void {
+  draft.value = saved.value;
+  input.value?.focus();
+}
 
 const busy = ref(false);
 const list = ref<HTMLElement | null>(null);
@@ -157,6 +169,9 @@ async function attach(event: Event): Promise<void> {
       <button v-for="variant in variants" :key="variant" type="button" class="btn-sec" @click="send(variant)">
         {{ variant }}
       </button>
+    </div>
+    <div v-if="canRestore" class="draft-restore">
+      <button type="button" class="link-btn" @click="restoreDraft">{{ t('Restore draft') }}</button>
     </div>
     <div class="composer">
       <button type="button" class="icon-btn composer-attach" :title="t('Attach file')" @click="fileInput?.click()">

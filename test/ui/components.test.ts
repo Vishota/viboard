@@ -684,3 +684,40 @@ describe('ярлыки в интерфейсе (карточка 059)', () => {
     document.body.innerHTML = '';
   });
 });
+
+describe('восстановление черновика (карточка 154)', () => {
+  const dir = '2026-11-26T100000Z-41ae8240-001-x-q';
+  const mountThread = (): ReturnType<typeof mount> =>
+    mount(ThreadView, { props: { thread: { ...thread([agent('Вопрос')]), dir } }, attachTo: document.body });
+  const saved = (): string | null => localStorage.getItem(`viboard.draft.${dir}`);
+
+  afterEach(() => localStorage.clear());
+
+  it('набранный текст сохраняется по мере ввода; после повторного открытия поле пустое и ссылка его возвращает', async () => {
+    const fetchMock = stubServer(() => board());
+    const first = mountThread();
+    expect(first.find('.link-btn').exists()).toBe(false); // сохранённого нет — ссылки нет
+    await first.find('textarea').setValue('полдня писал ответ');
+    expect(saved()).toBe('полдня писал ответ');
+    first.unmount();
+    document.body.innerHTML = '';
+
+    // перезагрузка страницы: новое состояние приложения, хранилище то же
+    const second = mountThread();
+    const field = second.find('textarea');
+    expect(field.element.value).toBe(''); // молча не подставляем
+    expect(second.find('.link-btn').text()).toBe('Restore draft');
+    await second.find('.link-btn').trigger('click');
+    expect(field.element.value).toBe('полдня писал ответ');
+    expect(second.find('.link-btn').exists()).toBe(false); // текст уже в поле
+    expect(document.activeElement).toBe(field.element);
+
+    // отправлено — черновика больше нет
+    await second.find('button.btn').trigger('click');
+    await flushPromises();
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/chat')).toBe(true);
+    expect(saved()).toBeNull();
+    second.unmount();
+    document.body.innerHTML = '';
+  });
+});
