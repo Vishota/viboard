@@ -196,3 +196,35 @@ export interface MoveResult {
   /** Какая папка теперь default. */
   defaultPath: string;
 }
+
+// --- удалённый доступ (UD-55): логика — в access.ts и tunnel.ts; типы здесь, чтобы интерфейс не тянул node ---
+
+/** Подключённое устройство: своя сессия с cookie, её можно отозвать. */
+export interface Device {
+  id: string;
+  /** Как устройство назвалось по браузеру: «iPhone · Safari». */
+  name: string;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
+export interface TunnelTool {
+  state: 'ready' | 'missing';
+  /** Откуда клиент туннеля: вшит в exe или поставлен по согласию владельца. */
+  source: 'bundled' | 'installed' | null;
+}
+
+export interface AccessState {
+  tool: TunnelTool;
+  /** Точная версия virunx, с которой работает эта версия viboard. */
+  toolVersion: string;
+  /** Доступ открыт: туннель поднят. */
+  on: boolean;
+  /** Публичная ссылка туннеля. */
+  url: string | null;
+  /** Ключ для нового устройства: одноразовый, гаснет через две минуты или первым успехом. */
+  key: { value: string; expiresAt: number } | null;
+  devices: Device[];
+  /** Последняя неудача туннеля — показать владельцу. */
+  error: string | null;
+}

@@ -2,7 +2,8 @@
 // Сервер слушает только loopback; всё, что пришло не с этой страницы или не на этот хост, — 403.
 
 import { createHash, timingSafeEqual } from 'node:crypto';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import { Fail } from '../core/errors.js';
 
 /** Ошибка с HTTP-статусом и читаемым сообщением — попадает в ответ как есть. */
 export class HttpError extends Error {
@@ -39,12 +40,15 @@ export const CSP_APP = [
 /** Вложения и статика: документ открывается в песочнице — скрипты внутри файлов не выполняются. */
 export const CSP_SANDBOX = "sandbox; default-src 'none'";
 
-const loopbackHosts = (port: number): string[] => [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`];
-
-/** Защита от DNS rebinding: в локальном режиме Host — только loopback с нашим портом. */
-export function hostAllowed(host: string | undefined, port: number, publicAccess: boolean): boolean {
-  if (publicAccess) return true; // за туннелем Host переписывается; доступ защищает пароль
-  return host !== undefined && loopbackHosts(port).includes(host.toLowerCase());
+/**
+ * Host, с которым доска принимает запрос. За паролем — любой (туннель может переписывать имя).
+ * Без пароля — ровно `127.0.0.1:<порт>`: «localhost» и «[::1]» не принимаются, потому что туннель,
+ * переписывающий имя (virunx так делает по умолчанию), подставляет именно их — иначе доска без пароля
+ * оказалась бы открыта наружу (UD-55). Своё окно всегда открывается по 127.0.0.1.
+ */
+export function hostAllowed(host: string | undefined, port: number, protectedByPassword: boolean): boolean {
+  if (protectedByPassword) return true;
+  return host !== undefined && host.toLowerCase() === `127.0.0.1:${port}`;
 }
 
 export interface OriginPolicy {
@@ -154,4 +158,51 @@ export class RateLimiter {
       if (bucket.reset <= now) this.buckets.delete(key);
     }
   }
+}
+
+/** Ответ ошибкой: статус HttpError, 400 для Fail (ошибка человека), 500 — прочее (в лог). */
+export function respondError(res: ServerResponse, e: unknown): void {
+  const status = e instanceof HttpError ? e.status : e instanceof Fail ? 400 : 500;
+  if (status === 500) console.error(e);
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+  if (status === 413) res.setHeader('Connection', 'close');
+  const message = status === 500 ? 'internal server error' : e instanceof Error ? e.message : 'error';
+  sendJson(res, status, { error: message });
+}
+
+/** Слушать один порт: занят — отказ (see listenWithFallback). */
+function listenOnce(server: Server, port: number, host: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onError = (e: Error): void => {
+      server.off('listening', onListening);
+      reject(e);
+    };
+    const onListening = (): void => {
+      server.off('error', onError);
+      resolve();
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(port, host);
+  });
+}
+
+/** Порт занят (или зарезервирован системой) — следующий свободный, чтобы запуск не падал. */
+export async function listenWithFallback(server: Server, port: number, host: string): Promise<number> {
+  let last: unknown;
+  for (let candidate = port; candidate < Math.max(port, 1) + 20; candidate++) {
+    try {
+      await listenOnce(server, candidate, host);
+      const address = server.address();
+      return address !== null && typeof address === 'object' ? address.port : candidate;
+    } catch (e) {
+      last = e;
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code !== 'EADDRINUSE' && code !== 'EACCES') throw e;
+    }
+  }
+  throw new Error(`no free port from ${port} upward: ${(last as Error).message}`);
 }

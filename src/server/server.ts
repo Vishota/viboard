@@ -15,6 +15,8 @@ import { readRun, writeRun } from '../core/run.js';
 import { syncAuto } from '../core/sync.js';
 import { VERSION } from '../core/version.js';
 import { attachToCard, cardAssetPath, handleJson, threadAssetPath, type ApiContext } from './api.js';
+import { createAccessManager } from './access.js';
+import type { AccessManager, TunnelSetup } from './access.js';
 import { Auth } from './auth.js';
 import {
   secretEquals,
@@ -23,11 +25,15 @@ import {
   HttpError,
   RateLimiter,
   hostAllowed,
+  listenWithFallback,
   originAllowed,
   readBody,
+  respondError,
   securityHeaders,
   sendJson,
 } from './http.js';
+
+export { listenWithFallback } from './http.js';
 
 export interface ServerOptions {
   board: string;
@@ -41,6 +47,8 @@ export interface ServerOptions {
   devOrigins?: string[];
   /** Токен управления: знает только процесс с записью «уже запущено» — по нему CLI переключает режим доступа. */
   onControl?: (token: string) => void;
+  /** Где искать клиент туннеля и где хранить устройства (UD-55); по умолчанию — папка пакета и папка настроек. */
+  tunnel?: TunnelSetup;
   uiDir?: string;
   /** Команда CLI, которую протокол рекомендует агентам в промптах. */
   cli?: string;
@@ -81,7 +89,14 @@ const INLINE_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
 };
 
-export function createBoardServer(options: ServerOptions): http.Server {
+/** Сервер доски с его обработчиком: удалённый слушатель доступа передаёт запросы ему (UD-55). */
+export interface BoardServer extends http.Server {
+  handle: (req: IncomingMessage, res: ServerResponse) => void;
+  /** Управление удалённым доступом этого сервера. */
+  access: AccessManager;
+}
+
+export function createBoardServer(options: ServerOptions): BoardServer {
   let publicAccess = options.publicAccess === true;
   if (publicAccess && !options.password) {
     throw new Fail('public access requires a password: --password <password> or the VIBOARD_PASSWORD variable');
@@ -102,6 +117,9 @@ export function createBoardServer(options: ServerOptions): http.Server {
     const next = body.public === true;
     const password = typeof body.password === 'string' ? body.password : '';
     if (password === '') throw new HttpError(400, 'a password is required');
+    if (next && access.state().on) {
+      throw new HttpError(409, 'remote access is open — close it first in the window "Remote access"');
+    }
     if (next) {
       auth = new Auth(password, true);
       limiter = new RateLimiter();
@@ -140,6 +158,16 @@ export function createBoardServer(options: ServerOptions): http.Server {
     return address !== null && typeof address === 'object' ? address.port : (options.port ?? 0);
   };
 
+  // Удалённый доступ (UD-55): туннель смотрит на внутренний слушатель, запросы с него приходят сюда как
+  // от доверенного прокси. Управление доступом — только с локального, у туннеля туда пути нет.
+  const access: AccessManager = createAccessManager({
+    localPort: port,
+    localHandle: (req, res) => void handle(req, res),
+    passwordMode: () => publicAccess,
+    ...options.tunnel,
+  });
+  server.on('close', () => void access.close());
+
   async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
     const type = String(req.headers['content-type'] ?? '');
     if (!type.toLowerCase().startsWith('application/json')) throw new HttpError(415, 'expected application/json');
@@ -164,8 +192,16 @@ export function createBoardServer(options: ServerOptions): http.Server {
       const method = req.method ?? 'GET';
       const ip = req.socket.remoteAddress ?? '?';
 
-      if (!hostAllowed(req.headers.host, port(), publicAccess))
-        throw new HttpError(403, 'request is not for this host');
+      const protectedByPassword = auth !== null;
+      if (!hostAllowed(req.headers.host, port(), protectedByPassword)) {
+        // без пароля имя должно быть ровно 127.0.0.1 — иначе туннель, переписывающий имя, прошёл бы за локального
+        throw new HttpError(
+          403,
+          protectedByPassword
+            ? 'request is not for this host'
+            : `open the board at http://127.0.0.1:${port()}: other names are refused so that a tunnel cannot pass for a local browser`,
+        );
+      }
 
       if (method === 'GET') {
         if (path === '/') return serveIndex(res, uiDir);
@@ -178,6 +214,11 @@ export function createBoardServer(options: ServerOptions): http.Server {
           return sendAttachment(res, threadAssetPath(ctx, query.get('q') ?? '', query.get('f')));
         }
         if (auth && !auth.valid(req)) throwUnauthorized();
+        if (path.startsWith('/api/access')) {
+          const state = await access.handleLocal(method, path, {});
+          if (state === null) throw new HttpError(404, 'not found');
+          return sendJson(res, 200, state);
+        }
         const hit = await handleJson(ctx, 'GET', path, query, {});
         if (hit === null) throw new HttpError(404, 'not found');
         return sendJson(res, 200, hit);
@@ -209,6 +250,11 @@ export function createBoardServer(options: ServerOptions): http.Server {
       }
       if (auth && !auth.valid(req)) throwUnauthorized();
 
+      if (path.startsWith('/api/access')) {
+        const state = await access.handleLocal(method, path, await readJson(req));
+        if (state === null) throw new HttpError(404, 'not found');
+        return sendJson(res, 200, state);
+      }
       if (path === '/api/attach' || path === '/api/chat-attach') {
         const data = await readBody(req, UPLOAD_LIMIT);
         const name = query.get('name') ?? '';
@@ -226,23 +272,11 @@ export function createBoardServer(options: ServerOptions): http.Server {
     }
   }
 
-  return server;
+  return Object.assign(server, { handle, access });
 }
 
 function throwUnauthorized(): never {
   throw new HttpError(401, 'password required');
-}
-
-function respondError(res: ServerResponse, e: unknown): void {
-  const status = e instanceof HttpError ? e.status : e instanceof Fail ? 400 : 500;
-  if (status === 500) console.error(e);
-  if (res.headersSent) {
-    res.end();
-    return;
-  }
-  if (status === 413) res.setHeader('Connection', 'close');
-  const message = status === 500 ? 'internal server error' : e instanceof Error ? e.message : 'error';
-  sendJson(res, status, { error: message });
 }
 
 function serveIndex(res: ServerResponse, uiDir: string): void {
@@ -302,39 +336,6 @@ function sendAttachment(res: ServerResponse, file: string): void {
     'Content-Security-Policy': CSP_SANDBOX,
   });
   res.end(data);
-}
-
-function listenOnce(server: http.Server, port: number, host: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const onError = (e: Error): void => {
-      server.off('listening', onListening);
-      reject(e);
-    };
-    const onListening = (): void => {
-      server.off('error', onError);
-      resolve();
-    };
-    server.once('error', onError);
-    server.once('listening', onListening);
-    server.listen(port, host);
-  });
-}
-
-/** Порт занят (или зарезервирован системой) — следующий свободный, чтобы запуск не падал. */
-export async function listenWithFallback(server: http.Server, port: number, host: string): Promise<number> {
-  let last: unknown;
-  for (let candidate = port; candidate < Math.max(port, 1) + 20; candidate++) {
-    try {
-      await listenOnce(server, candidate, host);
-      const address = server.address();
-      return address !== null && typeof address === 'object' ? address.port : candidate;
-    } catch (e) {
-      last = e;
-      const code = (e as NodeJS.ErrnoException).code;
-      if (code !== 'EADDRINUSE' && code !== 'EACCES') throw e;
-    }
-  }
-  throw new Error(`no free port from ${port} upward: ${(last as Error).message}`);
 }
 
 export async function startServer(options: ServerOptions): Promise<Running> {

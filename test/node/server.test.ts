@@ -121,12 +121,24 @@ describe('локальный режим', () => {
     await app.close();
   });
 
-  it('DNS rebinding: чужой Host — 403, loopback — 200', async () => {
+  it('DNS rebinding: чужой Host — 403; без пароля принимается только 127.0.0.1 (UD-55)', async () => {
     const app = await boot();
     expect((await call(app.port, { headers: { Host: 'evil.example' } })).status).toBe(403);
     expect((await call(app.port, { headers: { Host: 'evil.example' }, path: '/api/state' })).status).toBe(403);
-    expect((await call(app.port, { headers: { Host: `localhost:${app.port}` }, path: '/api/ping' })).status).toBe(200);
+    expect((await call(app.port, { path: '/api/ping' })).status).toBe(200);
+    // «localhost» подставляет туннель, переписывающий имя (virunx по умолчанию): доска без пароля не должна
+    // принимать такой запрос за локальный
+    const rewritten = await call(app.port, { headers: { Host: `localhost:${app.port}` }, path: '/api/ping' });
+    expect(rewritten.status).toBe(403);
+    expect(rewritten.body).toContain('http://127.0.0.1:');
     await app.close();
+
+    // за паролем имя может быть любым — как раньше
+    const locked = await boot({ password: 'секрет' });
+    expect((await call(locked.port, { headers: { Host: `localhost:${locked.port}` }, path: '/api/ping' })).status).toBe(
+      200,
+    );
+    await locked.close();
   });
 
   it('CSRF: запись только с этой страницы и только с JSON', async () => {
